@@ -356,7 +356,10 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                 if re.match(r'^v\d+\.\d+\.\d+$', line):
                     self.version = line
                     self.save()
-                    return True
+                # Always return 'True', else non-re.match'd tags will
+                # result in a return value of 'None'
+                # As noted above, stage result is irrelevant
+                return True
 
         except KeyError:
             pass
