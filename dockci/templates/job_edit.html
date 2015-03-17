@@ -15,56 +15,93 @@
   {% endif %}
 {%- endblock %}
 {% block content %}
-{% if edit_operation == 'new' -%}
-  <form class="form-horizontal" role="form" action="/jobs/new" method="POST">
-{%- else -%}
-  <form class="form-horizontal" role="form" action="/jobs/{{ job.slug }}" method="POST">
-{%- endif %}
-  <div class="form-group">
-    <label for="inputSlug" class="col-sm-2 control-label">Slug</label>
-    <div class="col-sm-10">
-      {% if edit_operation == 'new' -%}
-        <input required class="form-control" id="inputSlug" name="slug" placeholder="Slug" value="{{ job.slug or '' }}">
-      {%- else -%}
-        <p class="form-control-static">{{ job.slug }}</p>
-      {% endif %}
-    </div>
+<style type="text/css">
+  .panel-body { padding-top: 0px; }
+  .nav-tabs li.active { background-color: rgba(255, 255, 255, 0.1); }
+</style>
+<div class="panel panel-default">
+  <div class="panel-body">
+    {% if edit_operation == 'new' -%}
+      <form class="form-horizontal bs-component" role="form" action="/jobs/new" method="POST">
+    {%- else -%}
+      <form class="form-horizontal bs-component" role="form" action="/jobs/{{ job.slug }}" method="POST">
+    {%- endif %}
+      <div class="form-group">
+        <label class="col-sm-2 control-label">Repo type</label>
+        <ul id="repoTypeTabs" class="nav nav-tabs col-sm-10">
+          <li class="active"><a href="#github">GitHub</a></li>
+          <li><a href="#manual">Manual</a></li>
+        </ul>
+      </div>
+      <div class="tab-content">
+        <div id="github" class="active tab-pane">
+          GitHub config to go here
+        </div>
+        <div id="manual" class="tab-pane">
+          <div class="form-group">
+            <label for="inputRepo" class="col-sm-2 control-label">Git Repository</label>
+            <div class="col-sm-10">
+              <input required class="form-control" id="inputRepo" name="repo" placeholder="https://your.repo.url" value="{{ job.repo }}">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputSlug" class="col-sm-2 control-label">Slug</label>
+        <div class="col-sm-10">
+          {% if edit_operation == 'new' -%}
+            <input required class="form-control" id="inputSlug" name="slug" placeholder="Slug" value="{{ job.slug or '' }}">
+          {%- else -%}
+            <p class="form-control-static">{{ job.slug }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputName" class="col-sm-2 control-label">Name</label>
+        <div class="col-sm-10">
+          <input required class="form-control" id="inputName" name="name" placeholder="Name" value="{{ job.name }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputGithubSecret" class="col-sm-2 control-label">GitHub Webhook Secret</label>
+        <div class="col-sm-10">
+          <input class="form-control" id="inputGithubSecret" name="github_secret" placeholder="*****">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputHipchatApiToken" class="col-sm-2 control-label">HipChat API Token</label>
+        <div class="col-sm-10">
+          <input class="form-control" type="password" id="inputHipchatApiToken" name="hipchat_api_token" value="{{ job.hipchat_api_token }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputHipchatRoom" class="col-sm-2 control-label">HipChat Room</label>
+        <div class="col-sm-10">
+          <input class="form-control" id="inputHipchatRoom" name="hipchat_room" value="{{ job.hipchat_room }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-sm-2">&nbsp;</div>
+        <div class="col-sm-10">
+          <button type="submit" class="btn btn-primary">Save</button>
+          <a class="btn btn-default" href="/jobs/{{ job.slug }}">Cancel</a>
+        </div>
+    </form>
+    <script type="text/javascript">
+      var tabsRequiredFields = {};
+      $('#repoTypeTabs a').each(function(idx, el) {
+        var thisTabRequired = $('*[required]', $(el.hash));
+        tabsRequiredFields[$(el).attr('href')] = thisTabRequired;
+        $(el).click(function(ev) {
+          ev.preventDefault();
+          $.each(tabsRequiredFields, function(idx, oldTabRequired) {
+            $(oldTabRequired).attr('required', false)
+          })
+          thisTabRequired.attr('required', true)
+          $(el).tab('show');
+        })
+      })
+    </script>
   </div>
-  <div class="form-group">
-    <label for="inputName" class="col-sm-2 control-label">Name</label>
-    <div class="col-sm-10">
-      <input required class="form-control" id="inputName" name="name" placeholder="Name" value="{{ job.name }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputRepo" class="col-sm-2 control-label">Git Repository</label>
-    <div class="col-sm-10">
-      <input required class="form-control" id="inputRepo" name="repo" placeholder="https://your.repo.url" value="{{ job.repo }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputGithubSecret" class="col-sm-2 control-label">GitHub Webhook Secret</label>
-    <div class="col-sm-10">
-      <input class="form-control" id="inputGithubSecret" name="github_secret" placeholder="*****">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputHipchatApiToken" class="col-sm-2 control-label">HipChat API Token</label>
-    <div class="col-sm-10">
-      <input class="form-control" type="password" id="inputHipchatApiToken" name="hipchat_api_token" value="{{ job.hipchat_api_token }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputHipchatRoom" class="col-sm-2 control-label">HipChat Room</label>
-    <div class="col-sm-10">
-      <input class="form-control" id="inputHipchatRoom" name="hipchat_room" value="{{ job.hipchat_room }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <div class="col-sm-2">&nbsp;</div>
-    <div class="col-sm-10">
-      <button type="submit" class="btn btn-primary">Save</button>
-      <a class="btn btn-default" href="/jobs/{{ job.slug }}">Cancel</a>
-    </div>
-</form>
+</div>
 {% endblock %}
