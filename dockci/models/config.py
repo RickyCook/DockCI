@@ -59,6 +59,9 @@ class Config(SingletonModel):  # pylint:disable=too-few-public-methods
     mail_default_sender = LoadOnAccess(default=lambda _:
                                        "dockci@%s" % socket.gethostname())
 
+    github_client_id = LoadOnAccess(default=lambda _: None)
+    github_client_secret = LoadOnAccess(default=lambda _: None)
+
     @property
     def docker_registry_host(self):
         """

@@ -30,6 +30,7 @@ def config_edit_view():
     )
     all_fields = restart_fields + (
         'docker_use_registry', 'docker_registry',
+        'github_client_id', 'github_client_secret',
     )
 
     saved = request_fill(CONFIG, all_fields)
