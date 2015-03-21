@@ -33,12 +33,11 @@ def request_fill(model_obj, fill_atts, save=True):
     Fill given model attrs from a POST request (and ignore other requests).
     Will save only if the save flag is True
     """
-    print(request.method)
     if request.method == 'POST':
         for att in fill_atts:
-            if att in request.form:
+            if att in request.form and request.form[att] != '':
                 setattr(model_obj, att, request.form[att])
-            else:
+            elif att not in request.form:
                 setattr(model_obj, att, None)
 
         # TODO move the flash to views
