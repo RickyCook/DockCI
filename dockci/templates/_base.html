@@ -31,6 +31,7 @@
   <script src="/static/lib/js/jquery.min.js"></script>
   <script src="/static/lib/js/URI.min.js"></script>
   <script src="/static/lib/js/jquery.URI.min.js"></script>
+  <script src="/static/lib/js/jquery.cookie.js"></script>
   <script src="/static/lib/js/tab.js"></script>
   <script src="/static/lib/js/ansi_up.js"></script>
   <script src="/static/lib/js/md5.min.js"></script>
@@ -50,6 +51,40 @@
     }
     .form-horizontal .checkbox {
       padding-top: 0px;
+    }
+
+    @-moz-keyframes spin {
+      from { -moz-transform: rotate(0deg); }
+      to { -moz-transform: rotate(360deg); }
+    }
+    @-webkit-keyframes spin {
+      from { -webkit-transform: rotate(0deg); }
+      to { -webkit-transform: rotate(360deg); }
+    }
+    @keyframes spin {
+      from { transform:rotate(0deg); }
+      to { transform:rotate(360deg); }
+    }
+    .spin {
+      display: inline-block;
+
+      -webkit-animation-name: spin;
+      -webkit-animation-duration: 1000ms;
+      -webkit-animation-iteration-count: infinite;
+      -webkit-animation-timing-function: linear;
+      -moz-animation-name: spin;
+      -moz-animation-duration: 1000ms;
+      -moz-animation-iteration-count: infinite;
+      -moz-animation-timing-function: linear;
+      -ms-animation-name: spin;
+      -ms-animation-duration: 1000ms;
+      -ms-animation-iteration-count: infinite;
+      -ms-animation-timing-function: linear;
+
+      animation-name: spin;
+      animation-duration: 1000ms;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
     }
   </style>
 </head>

@@ -17,6 +17,7 @@ collectstatic: htmldeps
 	cp bower_components/bootstrap-material-design/dist/js/material.min.js dockci/static/lib/js
 	cp bower_components/bootstrap-material-design/dist/js/ripples.min.js dockci/static/lib/js
 	cp bower_components/jquery/dist/jquery.min.js dockci/static/lib/js
+	cp bower_components/jquery-cookie/jquery.cookie.js dockci/static/lib/js
 	cp bower_components/uri.js/src/jquery.URI.min.js dockci/static/lib/js
 	cp bower_components/uri.js/src/URI.min.js dockci/static/lib/js
 
