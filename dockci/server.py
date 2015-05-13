@@ -39,6 +39,7 @@ def app_init():
 
     mimetypes.add_type('application/x-yaml', 'yaml')
 
+    MAIL.init_app(APP)
     app_init_views()
 
 
