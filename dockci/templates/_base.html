@@ -62,9 +62,14 @@
         <a class="navbar-brand" href="/">DockCI</a>
       </div>
       <p class="navbar-right">
-        {% if not config.model.exists() %}<i class="navbar-brand mdi-alert-warning mdi-error"></i>{% endif %}
-        {% if config.model.restart_needed %}<i class="navbar-brand mdi-alert-warning mdi-warning"></i>{% endif %}
-        <a class="btn btn-default navbar-btn" href="/config"><i class="mdi-action-settings"></i></a>
+        {% if current_user.is_authenticated() %}
+          {% if not config.model.exists() %}<i class="navbar-brand mdi-alert-warning mdi-error"></i>{% endif %}
+          {% if config.model.restart_needed %}<i class="navbar-brand mdi-alert-warning mdi-warning"></i>{% endif %}
+          <a class="btn btn-default navbar-btn" href="/config"><i class="mdi-action-settings"></i></a>
+          <a class="btn btn-default navbar-btn" href="{{ url_for_security('logout') }}"><i class="mdi-social-person"></i></a>
+        {% else %}
+          <a class="btn btn-default navbar-btn" href="{{ url_for_security('login') }}"><i class="mdi-social-person-outline"></i></a>
+        {% endif %}
       </p>
     </div>
   </div>

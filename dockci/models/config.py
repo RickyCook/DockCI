@@ -61,6 +61,10 @@ class Config(SingletonModel):  # pylint:disable=too-few-public-methods
     mail_default_sender = LoadOnAccess(default=lambda _:
                                        "dockci@%s" % socket.gethostname())
 
+    security_password_salt = LoadOnAccess(generate=lambda _: uuid4().hex)
+    security_registerable = LoadOnAccess(default=True)
+    security_recoverable = LoadOnAccess(default=True)
+
     @property
     def docker_registry_host(self):
         """

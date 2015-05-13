@@ -1,0 +1,24 @@
+{% extends "_base.html" %}
+{% block title %}Login{% endblock %}
+{% block header %}Login{% endblock %}
+{% block content %}
+  {% from "forms/_macros.html" import render_field, render_field_check %}
+  <form class="form-horizontal" role="form" action="{{ url_for_security('login') }}" method="POST">
+    {{ login_user_form.hidden_tag() }}
+    <div class="panel panel-default">
+      <div class="panel-heading">Existing User</div>
+      <div class="panel-body">
+        {{ render_field(login_user_form.email) }}
+        {{ render_field(login_user_form.password) }}
+        {{ render_field_check(login_user_form.remember) }}
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="col-sm-10 col-sm-offset-2">
+        {{ login_user_form.submit(class_="btn btn-primary")|safe }}
+        {{ login_user_form.next(class_="btn")|safe }}
+        {% with security_menu_skip = ['login'] %}{% include "security/_menu.html" %}{% endwith %}
+      </div>
+    </div>
+  </form>
+{% endblock %}

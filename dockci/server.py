@@ -6,8 +6,10 @@ import logging
 import mimetypes
 
 from flask import Flask
+from flask.ext.security import Security
 from flask_mail import Mail
 
+from dockci.data_adapters.flask_security import YAMLModelUserDataStore
 from dockci.models.config import Config
 from dockci.util import setup_templates
 
@@ -15,6 +17,7 @@ from dockci.util import setup_templates
 APP = Flask(__name__)
 MAIL = Mail()
 CONFIG = Config()
+SECURITY = Security()
 
 APP.config.model = CONFIG  # For templates
 
@@ -37,8 +40,16 @@ def app_init():
     APP.config['MAIL_PASSWORD'] = CONFIG.mail_password
     APP.config['MAIL_DEFAULT_SENDER'] = CONFIG.mail_default_sender
 
+    APP.config['SECURITY_PASSWORD_HASH'] = 'bcrypt'
+    APP.config['SECURITY_PASSWORD_SALT'] = CONFIG.security_password_salt
+    APP.config['SECURITY_REGISTERABLE'] = CONFIG.security_registerable
+    APP.config['SECURITY_RECOVERABLE'] = CONFIG.security_recoverable
+    APP.config['SECURITY_CHANGEABLE'] = True
+    APP.config['SECURITY_EMAIL_SENDER'] = CONFIG.mail_default_sender
+
     mimetypes.add_type('application/x-yaml', 'yaml')
 
+    SECURITY.init_app(APP, YAMLModelUserDataStore())
     MAIL.init_app(APP)
     app_init_views()
 

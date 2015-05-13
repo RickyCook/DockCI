@@ -1,0 +1,15 @@
+<div class="form-group{% if field.errors %} has-error{% endif %}">
+  {% block label %}{{ field.label(class_="col-sm-2 control-label") }}{% endblock %}
+  <div class="col-sm-10 {% block control_class %}{% endblock %}">
+    {% block control %}{{ field(class_="form-control")|safe }}{% endblock %}
+      {% if field.errors %}
+        <span id="helpBlock" class="help-block">
+          <ul class="list-unstyled">
+          {% for error in field.errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+          </ul>
+      </span>
+    {% endif %}
+  </div>
+</div>
