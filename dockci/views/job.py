@@ -3,6 +3,7 @@ Views related to job management
 """
 
 from flask import abort, redirect, render_template, request
+from flask.ext.security import login_required
 
 from dockci.models.job import Job
 from dockci.server import APP
@@ -49,6 +50,7 @@ def job_view(slug):
 
 
 @APP.route('/jobs/<slug>/edit', methods=('GET',))
+@login_required
 def job_edit_view(slug):
     """
     View to edit a job
@@ -63,6 +65,7 @@ def job_edit_view(slug):
 
 
 @APP.route('/jobs/new', methods=('GET', 'POST'))
+@login_required
 def job_new_view():
     """
     View to make a new job
