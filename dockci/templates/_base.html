@@ -1,6 +1,6 @@
 <!doctype html>
-{% macro header_button(img, link) -%}
-  <a class="btn btn-default btn-lg" href="{{ link }}">
+{% macro header_button(img, link, classes='') -%}
+  <a class="btn btn-default btn-lg {{ classes }}" href="{{ link }}">
     <i class="mdi-{{ img }}"></i>
   </a>
 {%- endmacro %}
