@@ -6,6 +6,7 @@ from flask.ext.security import UserMixin, RoleMixin
 
 from yaml_model import LoadOnAccess, Model, ValidationError
 
+
 class User(Model, UserMixin):
     """
     User model for authentication
@@ -49,7 +50,6 @@ class User(Model, UserMixin):
             else:
                 raise AttributeError("Unknown attribute: '%s'" % var_name)
 
-
     def validate(self):
         errors = []
 
@@ -76,7 +76,6 @@ class Role(Model, RoleMixin):
     @property
     def name(self):
         return self.slug
-
 
     def __init__(self, slug):
         self.slug = slug

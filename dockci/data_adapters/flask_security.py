@@ -6,6 +6,7 @@ from flask.ext.security.datastore import Datastore, UserDatastore
 
 from dockci.models.auth import Role, User
 
+
 class YAMLModelDataStore(Datastore):
     def __init__(self):
         super(YAMLModelDataStore, self).__init__(None)
@@ -16,6 +17,7 @@ class YAMLModelDataStore(Datastore):
 
     # def delete(self, model):
     #     pass
+
 
 class YAMLModelUserDataStore(YAMLModelDataStore, UserDatastore):
     user_model = User
