@@ -6,7 +6,7 @@ import logging
 import mimetypes
 
 from flask import Flask
-from flask.ext.security import Security
+from flask_security import Security
 from flask_mail import Mail
 
 from dockci.data_adapters.flask_security import YAMLModelUserDataStore

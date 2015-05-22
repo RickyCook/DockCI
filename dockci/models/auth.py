@@ -2,7 +2,7 @@
 Users and permissions models
 """
 
-from flask.ext.security import UserMixin, RoleMixin
+from flask_security import UserMixin, RoleMixin
 
 from yaml_model import LoadOnAccess, Model, ValidationError
 
@@ -21,7 +21,10 @@ class User(Model, UserMixin):
     roles = []
 
     @property
-    def id(self):
+    def id(self):  # pylint:disable=invalid-name
+        """
+        Synonym for slug
+        """
         return self.slug
 
     def __init__(self, slug=None, **kwargs):
@@ -45,7 +48,7 @@ class User(Model, UserMixin):
         super(User, self).__init__()
 
         for var_name, value in kwargs.items():
-            if var_name in self._load_on_access:
+            if var_name in self._load_on_access:  # pylint:disable=no-member
                 setattr(self, var_name, value)
             else:
                 raise AttributeError("Unknown attribute: '%s'" % var_name)
@@ -70,13 +73,19 @@ class Role(Model, RoleMixin):
     description = LoadOnAccess()
 
     @property
-    def id(self):
+    def id(self):  # pylint:disable=invalid-name
+        """
+        Synonym for slug
+        """
         return self.slug
 
     @property
     def name(self):
+        """
+        Synonym for slug
+        """
         return self.slug
 
     def __init__(self, slug):
         self.slug = slug
-        super(User, self).__init__()
+        super(Role, self).__init__()

@@ -2,24 +2,34 @@
 Adapter for Flask-Security to YAML model
 """
 
-from flask.ext.security.datastore import Datastore, UserDatastore
+from flask_security.datastore import Datastore, UserDatastore
 
 from dockci.models.auth import Role, User
 
 
-class YAMLModelDataStore(Datastore):
+# TODO remove
+# pylint:disable=abstract-method
+class YAMLModelDataStore(Datastore):  # pylint:disable=too-few-public-methods
+    """
+    Generic Flask security Datastore implementation for YAML model
+    """
     def __init__(self):
         super(YAMLModelDataStore, self).__init__(None)
 
-    def put(self, model):
+    def put(self, model):  # pylint:disable=no-self-use
+        """ Store the model """
         model.save()
         return model
 
+    # TODO
     # def delete(self, model):
     #     pass
 
 
 class YAMLModelUserDataStore(YAMLModelDataStore, UserDatastore):
+    """
+    Flask security UserDatastore implementation for YAML model
+    """
     user_model = User
     role_model = Role
 
@@ -44,7 +54,7 @@ class YAMLModelUserDataStore(YAMLModelDataStore, UserDatastore):
         """ Returns a role matching the provided name """
         return self._find(self.role_model, **kwargs)
 
-    def _find(self, model, **kwargs):
+    def _find(self, model, **kwargs):  # pylint:disable=no-self-use
         """ Return a model matching the given args """
         if len(kwargs) > 1:
             raise ValueError("Can't filter on > 1 field at a time")

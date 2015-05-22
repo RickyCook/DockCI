@@ -3,7 +3,7 @@ Views related to job management
 """
 
 from flask import abort, redirect, render_template, request
-from flask.ext.security import login_required
+from flask_security import login_required
 
 from dockci.models.job import Job
 from dockci.server import APP

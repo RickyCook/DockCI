@@ -17,7 +17,7 @@ from ipaddress import ip_address
 import docker.errors
 
 from flask import flash, request
-from flask.ext.security import login_required
+from flask_security import login_required
 from yaml_model import ValidationError
 
 
