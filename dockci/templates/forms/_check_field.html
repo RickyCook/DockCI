@@ -1,0 +1,9 @@
+{% extends "forms/_nolabel_field.html" %}
+{% block control %}
+<div class="checkbox">
+  <label for="{{ field.label.field_id }}">
+  {{ field|safe }}
+  {{ field.label.text }}
+  </label>
+</div>
+{% endblock %}

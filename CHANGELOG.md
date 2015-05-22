@@ -2,6 +2,8 @@
 
 ## v0.0.4
 - Upgrade YAML model #146
+- Fix email #147
+- Add users, related UI, protect some forms #147
 
 ## v0.0.3
 - Log level to debug #20

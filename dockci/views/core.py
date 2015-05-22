@@ -5,6 +5,7 @@ Core app views
 import py.error  # pylint:disable=import-error
 
 from flask import render_template, request
+from flask_security import login_required
 
 from dockci.models.job import all_jobs
 from dockci.server import APP, CONFIG
@@ -20,6 +21,7 @@ def root_view():
 
 
 @APP.route('/config', methods=('GET', 'POST'))
+@login_required
 def config_edit_view():
     """
     View to edit global config
@@ -27,8 +29,9 @@ def config_edit_view():
     restart_fields = (
         'secret',
         'docker_use_env_vars', 'docker_hosts',
-        'mail_host_string', 'mail_use_tls',
-        'mail_use_ssl', 'mail_username', 'mail_password', 'mail_default_sender'
+        'mail_host_string', 'mail_use_tls', 'mail_use_ssl',
+        'mail_username', 'mail_password', 'mail_default_sender',
+        'security_registerable', 'security_recoverable',
     )
     all_fields = restart_fields + (
         'docker_use_registry', 'docker_registry',

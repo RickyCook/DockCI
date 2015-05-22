@@ -10,7 +10,7 @@
 {%- endif %}
 <form class="form-horizontal" role="form" action="/config" method="POST">
   <div class="panel panel-default">
-    <div class="panel-heading">General</div>
+    <div class="panel-heading">Security</div>
     <div class="panel-body">
       <div class="form-group">
         <label for="inputSecret" class="col-sm-2 control-label">Sessions secret</label>
@@ -19,13 +19,19 @@
         </div>
       </div>
       <div class="form-group">
-        <label for="inputGitHubId" class="col-sm-2 control-label">GitHub client ID</label>
-        <div class="col-sm-4">
-          <input class="form-control" id="inputGitHubId" name="github_client_id" value="{{ config.model.github_client_id or '' }}">
-        </div>
-        <label for="inputGitHubSecret" class="col-sm-2 control-label">Secret</label>
-        <div class="col-sm-4">
-          <input class="form-control" id="inputGitHubSecret" name="github_client_secret" type="password" placeholder="*****">
+        <div class="col-sm-10 col-sm-offset-2">
+          <div class="checkbox">
+            <label for="inputSecurityReg">
+              <input id="inputSecurityReg" name="security_registerable" type="checkbox" {{ 'checked' if config.model.security_registerable else '' }}>
+              Allow user registration
+            </label>
+          </div>
+          <div class="checkbox">
+            <label for="inputSecurityReset">
+              <input id="inputSecurityReset" name="security_recoverable" type="checkbox" {{ 'checked' if config.model.security_recoverable else '' }}>
+              Allow password resets
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -105,6 +111,21 @@
               SSL
             </label>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading">Integrations</div>
+    <div class="panel-body">
+      <div class="form-group">
+        <label for="inputGitHubId" class="col-sm-2 control-label">GitHub client ID</label>
+        <div class="col-sm-4">
+          <input class="form-control" id="inputGitHubId" name="github_client_id" value="{{ config.model.github_client_id or '' }}">
+        </div>
+        <label for="inputGitHubSecret" class="col-sm-2 control-label">Secret</label>
+        <div class="col-sm-4">
+          <input class="form-control" id="inputGitHubSecret" name="github_client_secret" type="password" placeholder="*****">
         </div>
       </div>
     </div>

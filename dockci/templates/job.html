@@ -2,10 +2,12 @@
 {% block title %}{{ job.name }}{% endblock %}
 {% block header %}
   {{ job.name }}
-  <span class="btn-group pull-right">
-    {{ header_button('editor-mode-edit', '/jobs/%s/edit' % job.slug) }}
-    {{ header_button('av-play-circle-outline', '/jobs/%s/builds/new' % job.slug) }}
-  </span>
+  {% if current_user.is_authenticated() %}
+    <span class="btn-group pull-right">
+      {{ header_button('editor-mode-edit', '/jobs/%s/edit' % job.slug) }}
+      {{ header_button('av-play-circle-outline', '/jobs/%s/builds/new' % job.slug) }}
+    </span>
+  {% endif %}
 {% endblock %}
 {% block content %}
 <div class="checkbox"><label>

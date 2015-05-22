@@ -1,0 +1,9 @@
+{% macro render_field(field) %}
+  {% include "forms/_base_field.html" %}
+{% endmacro %}
+{% macro render_field_nolabel(field) %}
+  {% include "forms/_nolabel_field.html" %}
+{% endmacro %}
+{% macro render_field_check(field) %}
+  {% include "forms/_check_field.html" %}
+{% endmacro %}

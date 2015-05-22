@@ -2,9 +2,11 @@
 {% block title %}Jobs{% endblock %}
 {% block header %}
     Jobs
-    <span class="btn-group pull-right">
-        {{ header_button('content-add', '/jobs/new') }}
-    </span>
+    {% if current_user.is_authenticated() %}
+        <span class="btn-group pull-right">
+            {{ header_button('content-add', '/jobs/new') }}
+        </span>
+    {% endif %}
 {% endblock %}
 {% block content %}
 <table class="table table-striped">
