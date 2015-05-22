@@ -20,7 +20,10 @@ from yaml_model import ValidationError
 from dockci.models.build import Build
 from dockci.models.job import Job
 from dockci.server import APP
-from dockci.util import is_valid_github, DateTimeEncoder
+from dockci.util import (login_or_github_required,
+                         is_valid_github,
+                         DateTimeEncoder,
+                         )
 
 
 @APP.route('/jobs/<job_slug>/builds/<build_slug>', methods=('GET',))
@@ -37,6 +40,7 @@ def build_view(job_slug, build_slug):
 
 
 @APP.route('/jobs/<job_slug>/builds/new', methods=('GET', 'POST'))
+@login_or_github_required
 def build_new_view(job_slug):
     """
     View to create a new build

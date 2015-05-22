@@ -17,6 +17,7 @@ from ipaddress import ip_address
 import docker.errors
 
 from flask import flash, request
+from flask_security import login_required
 from yaml_model import ValidationError
 
 
@@ -111,6 +112,25 @@ def stream_write_status(handle, status, success, fail):
     except Exception:  # pylint:disable=broad-except
         handle.write((" %s\n" % fail).encode())
         raise
+
+
+def login_or_github_required(func):
+    """
+    Decorator to either check for GitHub headers, or require a login
+    """
+    login_required_func = login_required(func)
+
+    def inner(*args, **kwargs):
+        """
+        Check headers, pass to func or login_required decorator on outcome
+        """
+        if request.method == 'POST' and 'X-Github-Event' in request.headers:
+            return func(*args, **kwargs)
+
+        else:
+            return login_required_func(*args, **kwargs)
+
+    return inner
 
 
 # pylint:disable=too-few-public-methods

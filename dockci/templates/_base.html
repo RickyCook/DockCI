@@ -1,6 +1,6 @@
 <!doctype html>
-{% macro header_button(img, link) -%}
-  <a class="btn btn-default btn-lg" href="{{ link }}">
+{% macro header_button(img, link, classes='') -%}
+  <a class="btn btn-default btn-lg {{ classes }}" href="{{ link }}">
     <i class="mdi-{{ img }}"></i>
   </a>
 {%- endmacro %}
@@ -31,6 +31,7 @@
   <script src="/static/lib/js/jquery.min.js"></script>
   <script src="/static/lib/js/URI.min.js"></script>
   <script src="/static/lib/js/jquery.URI.min.js"></script>
+  <script src="/static/lib/js/dropdown.js"></script>
   <script src="/static/lib/js/tab.js"></script>
   <script src="/static/lib/js/ansi_up.js"></script>
   <script src="/static/lib/js/md5.min.js"></script>
@@ -61,11 +62,23 @@
       <div class="navbar-header">
         <a class="navbar-brand" href="/">DockCI</a>
       </div>
-      <p class="navbar-right">
-        {% if not config.model.exists() %}<i class="navbar-brand mdi-alert-warning mdi-error"></i>{% endif %}
-        {% if config.model.restart_needed %}<i class="navbar-brand mdi-alert-warning mdi-warning"></i>{% endif %}
-        <a class="btn btn-default navbar-btn" href="/config"><i class="mdi-action-settings"></i></a>
-      </p>
+      <ul class="navbar-right nav navbar-nav">
+        {% if current_user.is_authenticated() %}
+          {% if not config.model.exists() %}<li><i class="navbar-brand mdi-alert-warning mdi-error"></i></li>{% endif %}
+          {% if config.model.restart_needed %}<li><i class="navbar-brand mdi-alert-warning mdi-warning"></i></li>{% endif %}
+          <li><a href="/config"><i class="mdi-action-settings"></i></a></li>
+          <li class="dropdown">
+            <a href="#" data-target="#" class="dropdown-toggle" data-toggle="dropdown"><i class="mdi-social-person"></i> {{ current_user.slug }}</a>
+            <ul class="dropdown-menu">
+              <li><a href="{{ url_for_security('change_password') }}">Change password</a></li>
+              <li><a href="{{ url_for_security('logout') }}">Logout</a></li>
+            </ul>
+          </li>
+        {% else %}
+          <a class="btn btn-default navbar-btn" href="{{ url_for_security('login') }}"><i class="mdi-social-person-outline"></i></a>
+        {% endif %}
+        </span>
+      </ul>
     </div>
   </div>
   <div class="container" role="main" style="position: relative">
