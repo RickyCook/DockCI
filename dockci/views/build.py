@@ -5,7 +5,6 @@ Views related to build management
 import json
 import logging
 import mimetypes
-import os.path
 import select
 
 from flask import (abort,
@@ -126,15 +125,15 @@ def build_output_view(job_slug, build_slug, filename):
     build = Build(job=job, slug=build_slug)
 
     # TODO possible security issue opending files from user input like this
-    data_file_path = os.path.join(*build.build_output_path() + [filename])
-    if not os.path.isfile(data_file_path):
+    data_file_path = build.build_output_path().join(filename)
+    if not data_file_path.check(file=True):
         abort(404)
 
     def loader():
         """
         Generator to stream the log file
         """
-        with open(data_file_path, 'rb') as handle:
+        with data_file_path.open('rb') as handle:
             while True:
                 data = handle.read(1024)
                 yield data

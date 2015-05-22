@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.0.4
+- Upgrade YAML model #146
+
 ## v0.0.3
 - Log level to debug #20
 - Docker registry config options #20

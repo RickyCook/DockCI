@@ -2,8 +2,7 @@
 DockCI - CI, but with that all important Docker twist
 """
 
-import os
-import os.path
+import py.error  # pylint:disable=import-error
 
 from yaml_model import LoadOnAccess, Model, OnAccess, ValidationError
 
@@ -15,13 +14,12 @@ def all_jobs():
     Get the list of jobs
     """
     try:
-        for filename in os.listdir(os.path.join(*Job.data_dir_path())):
-            full_path = Job.data_dir_path() + [filename]
-            if is_yaml_file(os.path.join(*full_path)):
-                job = Job(filename[:-5])
+        for path in Job.data_dir_path().listdir():
+            if is_yaml_file(path):
+                job = Job(path.purebasename)
                 yield job
 
-    except FileNotFoundError:
+    except py.error.ENOENT:
         return
 
 
@@ -40,22 +38,19 @@ class Job(Model):  # pylint:disable=too-few-public-methods
         from dockci.models.build import Build
 
         try:
-            my_data_dir_path = Build.data_dir_path()
-            my_data_dir_path.append(self.slug)
             builds = []
 
-            all_files = os.listdir(os.path.join(*my_data_dir_path))
+            all_files = Build.data_dir_path().join(self.slug).listdir()
             all_files.sort(reverse=reverse_)
 
             for filename in all_files:
-                full_path = Build.data_dir_path() + [self.slug, filename]
-                if is_yaml_file(os.path.join(*full_path)):
+                if is_yaml_file(filename):
                     builds.append(Build(job=self,
-                                        slug=filename[:-5]))
+                                        slug=filename.purebasename))
 
             return builds
 
-        except FileNotFoundError:
+        except py.error.ENOENT:
             return []
 
     def latest_build(self, passed=None, versioned=None, other_check=None):

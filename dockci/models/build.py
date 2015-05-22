@@ -4,8 +4,6 @@ DockCI - CI, but with that all important Docker twist
 
 import json
 import logging
-import os
-import os.path
 import random
 import re
 import subprocess
@@ -15,6 +13,7 @@ from datetime import datetime
 
 import docker
 import docker.errors
+import py.path  # pylint:disable=import-error
 
 from docker.utils import kwargs_from_env
 from flask import url_for
@@ -57,7 +56,7 @@ class BuildStage(object):
         """
         File that stage output is logged to
         """
-        return self.build.build_output_path() + ['%s.log' % self.slug]
+        return self.build.build_output_path().join('%s.log' % self.slug)
 
     def run(self):
         """
@@ -67,11 +66,8 @@ class BuildStage(object):
         if self.returncode is not None:
             raise AlreadyRunError(self)
 
-        data_dir_path = os.path.join(*self.build.build_output_path())
-        data_file_path = os.path.join(*self.data_file_path())
-
-        os.makedirs(data_dir_path, exist_ok=True)
-        with open(data_file_path, 'wb') as handle:
+        self.build.build_output_path().ensure_dir()
+        with self.data_file_path().open('wb') as handle:
             self.returncode = self.runnable(handle)
 
     @classmethod
@@ -96,7 +92,7 @@ class BuildStage(object):
                 handle.flush()
 
                 proc = subprocess.Popen(cmd_args_single,
-                                        cwd=cwd,
+                                        cwd=cwd.strpath,
                                         stdout=handle,
                                         stderr=subprocess.STDOUT)
                 proc.wait()
@@ -238,11 +234,11 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         """
         # pylint:disable=no-member
         output_files = (
-            (name, os.path.join(*self.build_output_path() + ['%s.tar' % name]))
+            (name, self.build_output_path().join('%s.tar' % name))
             for name in self.build_config.build_output.keys()
         )
         return {
-            name: {'size': bytes_human_readable(os.path.getsize(path)),
+            name: {'size': bytes_human_readable(path.size()),
                    'link': url_for('build_output_view',
                                    job_slug=self.job_slug,
                                    build_slug=self.slug,
@@ -250,7 +246,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                                    ),
                    }
             for name, path in output_files
-            if os.path.isfile(path)
+            if path.check(file=True)
         }
 
     @property
@@ -286,14 +282,15 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     def data_file_path(self):
         # Add the job name before the build slug in the path
         data_file_path = super(Build, self).data_file_path()
-        data_file_path.insert(-1, self.job_slug)
-        return data_file_path
+        return data_file_path.join(
+            '..', self.job.slug, data_file_path.basename
+        )
 
     def build_output_path(self):
         """
         Directory for any build output data
         """
-        return self.data_file_path()[:-1] + ['%s_output' % self.slug]
+        return self.data_file_path().join('..', '%s_output' % self.slug)
 
     def queue(self):
         """
@@ -315,6 +312,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         try:
             with tempfile.TemporaryDirectory() as workdir:
+                workdir = py.path.local(workdir)
                 pre_build = (stage() for stage in (
                     lambda: self._run_prep_workdir(workdir),
                     lambda: self._run_git_info(workdir),
@@ -368,7 +366,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         stage = self._stage(
             'git_prepare', workdir=workdir,
             cmd_args=(
-                ['git', 'clone', self.repo, workdir],
+                ['git', 'clone', self.repo, workdir.strpath],
                 ['git',
                  '-c', 'advice.detachedHead=false',
                  'checkout', self.commit
@@ -378,8 +376,8 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         result = stage.returncode == 0
 
         # check for, and load build config
-        build_config_file = os.path.join(workdir, BuildConfig.slug)
-        if os.path.isfile(build_config_file):
+        build_config_file = workdir.join(BuildConfig.slug)
+        if build_config_file.check(file=True):
             # pylint:disable=no-member
             self.build_config.load(data_file=build_config_file)
             self.build_config.save()
@@ -402,7 +400,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                 proc = subprocess.Popen(args,
                                         stdout=subprocess.PIPE,
                                         stderr=handle,
-                                        cwd=workdir,
+                                        cwd=workdir.strpath,
                                         )
                 proc.wait()
                 return proc
@@ -490,8 +488,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         try:
             # TODO opening file to get this is kinda awful
-            data_file_path = os.path.join(*stage.data_file_path())
-            with open(data_file_path, 'r') as handle:
+            with stage.data_file_path().open() as handle:
                 last_line = None
                 for line in handle:
                     line = line.strip()
@@ -648,7 +645,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
             'build',
             # saved stream for debugging
             # lambda: open('docker_build_stream', 'r'),
-            lambda: self.docker_client.build(path=workdir,
+            lambda: self.docker_client.build(path=workdir.strpath,
                                              tag=tag,
                                              nocache=no_cache,
                                              rm=True,
@@ -799,10 +796,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                 resp = self.docker_client.copy(self.container_id, docker_fn)
 
                 if 200 <= resp.status < 300:
-                    output_path = os.path.join(
-                        *self.build_output_path() + ['%s.tar' % key]
-                    )
-                    with open(output_path, 'wb') as output_fh:
+                    output_path = self.build_output_path().join('%s.tar' % key)
+                    with output_path.open('wb') as output_fh:
+                        # TODO stream so that not buffered in RAM
                         bytes_written = output_fh.write(resp.data)
 
                     handle.write(
@@ -933,4 +929,4 @@ class BuildConfig(Model):  # pylint:disable=too-few-public-methods
 
     def data_file_path(self):
         # Our data file path is <build output>/<slug>
-        return self.build.build_output_path() + [BuildConfig.slug]
+        return self.build.build_output_path().join(BuildConfig.slug)

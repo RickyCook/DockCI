@@ -2,11 +2,12 @@
 Application configuration models
 """
 
-import os.path
 import socket
 
 from urllib.parse import urlparse
 from uuid import uuid4
+
+import py.path  # pylint:disable=import-error
 
 from yaml_model import LoadOnAccess, SingletonModel, ValidationError
 
@@ -20,8 +21,9 @@ def default_docker_host(format_string, local_default=None):
     to use for a TCP connection. Otherwise, defaults to the default
     unix socket.
     """
-    docker_files = ('/.dockerenv', '/.dockerinit')
-    if any(os.path.isfile(filename) for filename in docker_files):
+    docker_files = [py.path.local(path)
+                    for path in ('/.dockerenv', '/.dockerinit')]
+    if any(path.check() for path in docker_files):
         return format_string.format(ip=default_gateway())
 
     return local_default

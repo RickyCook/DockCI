@@ -2,6 +2,8 @@
 Core app views
 """
 
+import py.error  # pylint:disable=import-error
+
 from flask import render_template, request
 
 from dockci.models.job import all_jobs
@@ -38,7 +40,7 @@ def config_edit_view():
     try:
         CONFIG.load()
 
-    except FileNotFoundError:
+    except py.error.ENOENT:
         pass
 
     if saved:
