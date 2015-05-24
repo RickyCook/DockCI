@@ -17,7 +17,7 @@ from ipaddress import ip_address
 import docker.errors
 
 from flask import flash, request
-from flask_security import login_required
+from flask_security import current_user, login_required
 from yaml_model import ValidationError
 
 
@@ -289,6 +289,21 @@ class FauxDockerLog(object):
             self.handle.write(json.dumps(self.defaults).encode())
             self.handle.write('\n'.encode())
             self.handle.flush()
+
+
+def tokengetter_for(name):
+    """
+    Flask security tokengetter for an endpoint
+    """
+    def inner():
+        """
+        Create a tokengetter for the current_user model
+        """
+        if current_user.is_authenticated():
+            return current_user.oauth_tokens.get(name, None)
+
+        return None
+    return inner
 
 
 def guess_multi_value(value):

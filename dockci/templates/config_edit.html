@@ -119,13 +119,13 @@
     <div class="panel-heading">Integrations</div>
     <div class="panel-body">
       <div class="form-group">
-        <label for="inputGitHubId" class="col-sm-2 control-label">GitHub client ID</label>
+        <label for="inputGitHubKey" class="col-sm-2 control-label">GitHub client key</label>
         <div class="col-sm-4">
-          <input class="form-control" id="inputGitHubId" name="github_client_id" value="{{ config.model.github_client_id or '' }}">
+          <input class="form-control" id="inputGitHubKey" name="github_key" value="{{ config.model.github_key or '' }}">
         </div>
         <label for="inputGitHubSecret" class="col-sm-2 control-label">Secret</label>
         <div class="col-sm-4">
-          <input class="form-control" id="inputGitHubSecret" name="github_client_secret" type="password" placeholder="*****">
+          <input class="form-control" id="inputGitHubSecret" name="github_secret" type="password" placeholder="*****">
         </div>
       </div>
     </div>

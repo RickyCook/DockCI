@@ -18,6 +18,11 @@
 <style type="text/css">
   .panel-body { padding-top: 0px; }
   .nav-tabs li.active { background-color: rgba(255, 255, 255, 0.1); }
+  #repo-list { list-style: none; }
+  #repo-list li {
+    padding-left: 0px;
+    overflow: hidden;
+  }
 </style>
 <div class="panel panel-default">
   <div class="panel-body">
@@ -29,23 +34,17 @@
       <div class="form-group">
         <label class="col-sm-2 control-label">Repo type</label>
         <ul id="repoTypeTabs" class="nav nav-tabs col-sm-10">
-          {% if config.model.github_client_id and config.model.github_client_secret %}<li><a href="#github">GitHub</a></li>{% endif %}
-          <li class="active"><a href="#manual">Manual</a></li>
+          {% if config.model.github_key and config.model.github_secret %}
+            <li><a id="githubTab" href="#github">GitHub</a></li>
+          {% endif %}
+          <li id="manualTab" class="active"><a href="#manual">Manual</a></li>
         </ul>
       </div>
       <div class="tab-content">
         <div id="github" class="tab-pane">
           <div class="form-group">
-            <label for="inputName" class="col-sm-2 control-label">GitHub Login</label>
-            <div class="col-sm-10">
-              <p class="form-control-static"><i class="loading mdi-device-data-usage spin"></i></p>
-            </div>
-          </div>
-          <div class="form-group">
             <label for="inputName" class="col-sm-2 control-label">Settings from</label>
-            <div class="col-sm-10">
-              <input required disabled class="form-control" id="inputName" name="name" placeholder="Loading. Wait a sec" value="{{ job.name }}">
-            </div>
+            <ul id="repo-list" class="col-sm-10 form-control-static" style="list-style: none;"></ul>
           </div>
         </div>
         <div id="manual" class="tab-pane active">
@@ -103,22 +102,86 @@
         </div>
     </form>
     <script type="text/javascript">
-      var tabsRequiredFields = {};
+      var tabsRequiredFields = {},
+          githubRepos = {},
+          inputSlug = $('#inputSlug'),
+          inputName = $('#inputName'),
+          inputRepo = $('#inputRepo'),
+          repoList = $('#repo-list'),
+          repoListGroup = repoList.parents('.form-group');
+      function handleProjectsList(result) {
+        var repos = result['repos'],
+            redirect = result['redirect']
+        if (typeof(redirect) != 'undefined') {
+          document.location = redirect
+          return
+        }
+        repoList.empty();
+        for (idx = 0; idx < repos.length; idx++) {
+          liEl = $('<li class="col-sm-4"></li>')
+          linkEl = $('<a href="javascript:void(0)">' + repos[idx]['full_name'] + '</a>')
+          liEl.append(linkEl)
+          linkEl.click(repos[idx], function(ev) {
+            short_name = ev.data['full_name'].split('/')
+            short_name = short_name.slice(1, short_name.length)
+            short_name = short_name.join('/')
+            inputSlug.val(short_name)
+            inputName.val(short_name)
+            inputRepo.val(ev.data['clone_url'])
+          })
+          repoList.append(liEl)
+        }
+      }
+      function handleProjectsError(jqxhr, status, error) {
+        repoListGroup.addClass('has-error')
+        repoList.empty()
+        if (error == '') {
+          if (status == 0) {
+            error = 'Unknown error'
+          } else if (typeof(status) == 'number') {
+            error = 'Unknown HTTP error: ' + status
+          } else {
+            error = 'Unknown error'
+          }
+        }
+        repoList.append($('<li class="col-sm-12">' + error + '</li>'))
+      }
       $('#repoTypeTabs a').each(function(idx, el) {
         var thisTabRequired = $('*[required]', $(el.hash));
         tabsRequiredFields[$(el).attr('href')] = thisTabRequired;
         $(el).click(function(ev) {
+          var inputGithubSecret = $('#inputGithubSecret')
           ev.preventDefault();
           $.each(tabsRequiredFields, function(idx, oldTabRequired) {
             $(oldTabRequired).attr('required', false)
           })
           thisTabRequired.attr('required', true)
+
+          if (el.hash == '#manual') {
+            inputGithubSecret.attr('disabled', false)
+          } else {
+            inputGithubSecret.attr('disabled', true)
+          }
+
+          if (el.hash == '#github') {
+            repoListGroup.removeClass('has-error')
+            inputGithubSecret.val('Auto filled on save')
+            repoList.empty()
+            repoList.append($('<li class="col-sm-12">Loading... Just a sec!</li>'))
+            $.getJSON(
+              '/github/projects.json',
+              {'return_to': document.location.toString()}
+            )
+              .done(handleProjectsList)
+              .fail(handleProjectsError)
+          } else {
+            inputGithubSecret.val('')
+          }
+
           $(el).tab('show');
         })
       })
-      if (typeof $.cookie('github_auth') != 'undefined') {
-        $('a[href="#github"]').click()
-      }
+      $('#{{ default_repo_type }}Tab').click()
     </script>
   </div>
 </div>

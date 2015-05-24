@@ -2,8 +2,10 @@
 Views related to job management
 """
 
+import re
+
 from flask import abort, redirect, render_template, request
-from flask_security import login_required
+from flask_security import current_user, login_required
 
 from dockci.models.job import Job
 from dockci.server import APP
@@ -77,4 +79,22 @@ def job_new_view():
         if saved:
             return redirect('/jobs/{job_slug}'.format(job_slug=job.slug))
 
-    return render_template('job_edit.html', job=job, edit_operation='new')
+    if 'repo_type' in request.args:
+        default_repo_type = request.args['repo_type']
+
+    elif current_user is None or not current_user.is_authenticated():
+        default_repo_type = 'manual'
+
+    elif 'github' in current_user.oauth_tokens:
+        default_repo_type = 'github'
+
+    else:
+        default_repo_type = 'manual'
+
+    re.sub(r'[^\w\s]', '', default_repo_type)
+
+    return render_template('job_edit.html',
+                           job=job,
+                           edit_operation='new',
+                           default_repo_type=default_repo_type,
+                           )
