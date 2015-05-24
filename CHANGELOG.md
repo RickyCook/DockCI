@@ -4,6 +4,7 @@
 - Upgrade YAML model #146
 - Fix email #147
 - Add users, related UI, protect some forms #147
+- New job cancel button doesn't 404
 
 ## v0.0.3
 - Log level to debug #20
