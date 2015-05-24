@@ -4,7 +4,9 @@
 - Upgrade YAML model #146
 - Fix email #147
 - Add users, related UI, protect some forms #147
-- New job cancel button doesn't 404
+- New job cancel button doesn't 404 #149
+- Get GitHub OAuth token for users #149
+- Import from GitHub on new job form #149
 
 ## v0.0.3
 - Log level to debug #20
