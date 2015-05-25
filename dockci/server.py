@@ -63,6 +63,7 @@ def app_init_views():
 
     import dockci.views.build
     import dockci.views.job
+    import dockci.views.test
 
     setup_templates(APP)
 

@@ -58,9 +58,11 @@
       </div>
       <div class="form-group">
         <label for="inputDockerRegistry" class="col-sm-2 control-label">Docker registry host</label>
-        <div class="col-sm-10">
+        <div class="col-sm-9">
           <input class="form-control" id="inputDockerRegistry" name="docker_registry" value="{{ config.model.docker_registry or '' }}">
+          <div class="help-block" style="display:none">A longer block of help text that breaks onto a new line and may extend beyond one line.</div>
         </div>
+        <div class="col-sm-1"><a id="btnTestRegistry" href="javascript:void(0)" class="btn btn-flat pull-right">Test</a></div>
       </div>
       <div class="form-group">
         <div class="checkbox col-sm-10  col-sm-offset-2">
@@ -133,6 +135,45 @@
       updateDockerHostsHeight();
     });
     updateDockerHostsHeight();
+
+    $('#btnTestRegistry').click(function() {
+      var btnTest = $(this),
+          formGroup = btnTest.parents('.form-group'),
+          helpBlock = $('.help-block', formGroup),
+          urlInput = $('input', formGroup)
+      btnTest.html($('<i class="mdi-device-data-usage spin" />'))
+      formGroup.toggleClass('has-error', false)
+      btnTest.toggleClass('btn-success', false)
+      helpBlock.hide()
+
+      $.getJSON('/test/registry.json', {'url': urlInput.val()})
+        .done(function(data) {
+          all_success = true
+          $.each(['api'], function(idx, test_name) {
+            var result = data[test_name]['result'],
+                detail = data[test_name]['detail']
+            if (result === false) {
+              helpBlock.text(detail)
+            }
+            all_success = all_success && result
+          })
+          if (all_success) {
+            btnTest.html($('<i class="mdi-action-done-all" />'))
+          } else {
+            btnTest.text("Test")
+            helpBlock.show()
+          }
+          btnTest.toggleClass('btn-success', all_success)
+          btnTest.toggleClass('btn-danger', !all_success)
+          formGroup.toggleClass('has-error', !all_success)
+        })
+        .fail(function(jqXHR, status, error) {
+          formGroup.toggleClass('has-error', true)
+          btnTest.text("Test")
+          helpBlock.text(error_message_for(status, error))
+          helpBlock.show()
+        })
+    })
   });
 </script>
 {% endblock %}
