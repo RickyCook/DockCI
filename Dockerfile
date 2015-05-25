@@ -5,10 +5,6 @@ ENTRYPOINT ["/usr/bin/make"]
 CMD ["run"]
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV DEBIAN_MIRROR http://mirror.linux.org.au/debian
-RUN echo "deb $DEBIAN_MIRROR jessie main"                     >  /etc/apt/sources.list && \
-    echo "deb $DEBIAN_MIRROR jessie-updates main"             >> /etc/apt/sources.list && \
-    echo "deb http://security.debian.org jessie/updates main" >> /etc/apt/sources.list
 RUN apt-get update && apt-get install -y aria2 && \
     aria2c -d /tmp "https://raw.githubusercontent.com/RickyCook/minimal-apt-fast/5750510/install.sh" && \
     APT_FAST_VERSION=v1.7.6 NO_APT_UPDATE=y sh -e /tmp/install.sh && \
