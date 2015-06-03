@@ -291,7 +291,7 @@ class FauxDockerLog(object):
             self.handle.flush()
 
 
-def tokengetter_for(name):
+def tokengetter_for(oauth_app):
     """
     Flask security tokengetter for an endpoint
     """
@@ -299,11 +299,25 @@ def tokengetter_for(name):
         """
         Create a tokengetter for the current_user model
         """
-        if current_user.is_authenticated():
-            return current_user.oauth_tokens.get(name, None)
+        return get_token_for(oauth_app)
 
-        return None
     return inner
+
+def get_token_for(oauth_app):
+    """
+    Get a token for the currently logged in user
+    """
+    if current_user.is_authenticated():
+        from dockci.server import OAUTH_APPS_SCOPES
+        try:
+            detail = current_user.oauth_tokens[oauth_app.name]
+            if detail['scope'] == OAUTH_APPS_SCOPES[oauth_app.name]:
+                return (detail['key'], detail['secret'])
+
+        except (KeyError, TypeError):
+            pass
+
+    return None
 
 
 def guess_multi_value(value):

@@ -25,7 +25,10 @@ APP.config.model = CONFIG  # For templates
 
 
 OAUTH_APPS = {}
-
+OAUTH_APPS_SCOPES = {}
+OAUTH_APPS_SCOPE_SERIALIZERS = {
+    'github': lambda scope: ','.join(sorted(scope.split(','))),
+}
 
 def app_init():
     """
@@ -65,11 +68,14 @@ def app_init_oauth():
     Initialize the OAuth integrations
     """
     if CONFIG.github_key and CONFIG.github_secret:
+        scope = 'user:email,admin:repo_hook,repo'
+        OAUTH_APPS_SCOPES['github'] = \
+            OAUTH_APPS_SCOPE_SERIALIZERS['github'](scope)
         OAUTH_APPS['github'] = OAUTH.remote_app(
             'github',
             consumer_key=CONFIG.github_key,
             consumer_secret=CONFIG.github_secret,
-            request_token_params={'scope': 'user:email'},
+            request_token_params={'scope': scope},
             base_url='https://api.github.com/',
             request_token_url=None,
             access_token_method='POST',
@@ -77,9 +83,8 @@ def app_init_oauth():
             authorize_url='https://github.com/login/oauth/authorize'
         )
 
-    for name, oauth_app in OAUTH_APPS.items():
-        oauth_app.tokengetter(tokengetter_for(name))
-
+    for oauth_app in OAUTH_APPS.values():
+        oauth_app.tokengetter(tokengetter_for(oauth_app))
 
 def app_init_views():
     """

@@ -10,7 +10,8 @@ from urllib.parse import urlencode
 from flask import abort, flash, redirect, request, url_for
 from flask_security import current_user
 
-from dockci.server import APP, OAUTH_APPS
+from dockci.server import APP, OAUTH_APPS, OAUTH_APPS_SCOPE_SERIALIZERS
+from dockci.util import get_token_for
 
 
 @APP.route('/oauth-authorized/<name>')
@@ -32,7 +33,11 @@ def oauth_authorized(name):
         ), 'danger')
 
     else:
-        current_user.oauth_tokens[name] = [resp['access_token'], '']
+        current_user.oauth_tokens[name] = {
+            'key': resp['access_token'],
+            'secret': '',
+            'scope': OAUTH_APPS_SCOPE_SERIALIZERS[name](resp['scope']),
+        }
         current_user.save()
 
         flash(u"Connected to %s" % name.title(), 'success')
@@ -71,7 +76,8 @@ def oauth_required(acceptable=None, force_name=None):
             if name not in acceptable:
                 return abort(404)
 
-            if name not in current_user.oauth_tokens:
+            oauth_app = OAUTH_APPS[name]
+            if not get_token_for(oauth_app):
                 return_to = request.args.get('return_to', None)
                 base_url = url_for(
                     'oauth_authorized', name=name, _external=True,
@@ -85,7 +91,7 @@ def oauth_required(acceptable=None, force_name=None):
                 else:
                     callback_uri = base_url
 
-                resp = OAUTH_APPS[name].authorize(callback=callback_uri)
+                resp = oauth_app.authorize(callback=callback_uri)
                 return json.dumps({'redirect': resp.location})
 
             else:
