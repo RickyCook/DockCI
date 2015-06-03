@@ -32,11 +32,10 @@ def config_edit_view():
         'mail_host_string', 'mail_use_tls', 'mail_use_ssl',
         'mail_username', 'mail_password', 'mail_default_sender',
         'security_registerable', 'security_recoverable',
-        'github_client_id', 'github_client_secret',
+        'github_key', 'github_secret',
     )
     all_fields = restart_fields + (
         'docker_use_registry', 'docker_registry',
-        'github_client_id', 'github_client_secret',
     )
 
     saved = request_fill(CONFIG, all_fields)
