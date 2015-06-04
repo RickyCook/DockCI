@@ -12,6 +12,7 @@ import json
 import datetime
 
 from contextlib import contextmanager
+from functools import wraps
 from ipaddress import ip_address
 
 import docker.errors
@@ -120,6 +121,7 @@ def login_or_github_required(func):
     """
     login_required_func = login_required(func)
 
+    @wraps(func)
     def inner(*args, **kwargs):
         """
         Check headers, pass to func or login_required decorator on outcome
