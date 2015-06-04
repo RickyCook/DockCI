@@ -41,17 +41,29 @@ def request_fill(model_obj, fill_atts, save=True):
             elif att not in request.form:
                 setattr(model_obj, att, None)
 
-        # TODO move the flash to views
-        if save:
-            try:
-                model_obj.save()
-                flash(u"%s saved" % model_obj.__class__.__name__.title(),
-                      'success')
-                return True
+    if save:
+        model_flash(model_obj)
 
-            except ValidationError as ex:
-                flash(ex.messages, 'danger')
-                return False
+
+def model_flash(model_obj, save=True):
+    """
+    Save a model object, displaying appropriate flash messages
+    """
+    # TODO move the flash to views
+    try:
+        if save:
+            model_obj.save()
+            flash(u"%s saved" % model_obj.__class__.__name__.title(),
+                  'success')
+
+        else:
+            model_obj.validate()
+
+        return True
+
+    except ValidationError as ex:
+        flash(ex.messages, 'danger')
+        return False
 
 
 def default_gateway():
