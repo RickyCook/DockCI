@@ -25,3 +25,9 @@ def git_projects_list_view(name):
         } for repo in data
     ]}
     return json.dumps(data)
+
+@APP.route('/aaa/<path:uri>')
+def aaa(uri):
+    from flask import Response
+    return Response(json.dumps(OAUTH_APPS['github'].get(uri).data),
+                    mimetype='application/json')

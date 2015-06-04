@@ -4,12 +4,12 @@ Views related to job management
 
 import re
 
-from flask import abort, redirect, render_template, request
+from flask import abort, flash, redirect, render_template, request
 from flask_security import current_user, login_required
 
 from dockci.models.job import Job
-from dockci.server import APP
-from dockci.util import request_fill
+from dockci.server import APP, OAUTH_APPS
+from dockci.util import model_flash, request_fill
 
 
 @APP.route('/jobs/<slug>', methods=('GET', 'POST'))
@@ -51,7 +51,7 @@ def job_view(slug):
                            page_size=page_size)
 
 
-@APP.route('/jobs/<slug>/edit', methods=('GET',))
+@APP.route('/jobs/<slug>/edit', methods=('GET','POST'))
 @login_required
 def job_edit_view(slug):
     """
@@ -61,9 +61,10 @@ def job_edit_view(slug):
     if not job.exists():
         abort(404)
 
-    return render_template('job_edit.html',
-                           job=job,
-                           edit_operation='edit')
+    return job_input_view(job, 'edit', (
+        'name', 'repo', 'github_secret', 'github_repo_id',
+        'hipchat_api_token', 'hipchat_room',
+    ))
 
 
 @APP.route('/jobs/new', methods=('GET', 'POST'))
@@ -73,9 +74,58 @@ def job_new_view():
     View to make a new job
     """
     job = Job()
+    return job_input_view(job, 'new', (
+        'slug', 'name', 'repo', 'github_secret', 'github_repo_id',
+        'hipchat_api_token', 'hipchat_room',
+    ))
+
+def job_input_view(job, edit_operation, fields):
+    """ Generic view for job editing """
     if request.method == 'POST':
-        saved = request_fill(job, ('slug', 'name', 'repo',
-                                   'hipchat_api_token', 'hipchat_room'))
+        old_github_repo_id = job.github_repo_id
+        try:
+            old_github_api_hook_endpoint = job.github_api_hook_endpoint
+        except ValueError:
+            old_github_api_hook_endpoint = None
+
+        saved = request_fill(
+            job, fields,
+            save=request.args.get('repo_type', None) != 'github',
+        )
+
+        if request.args.get('repo_type', None) == 'github':
+            valid = model_flash(job, save=False)
+            if valid:
+                result = None
+                # Repo ID hasn't changed
+                if old_github_repo_id == job.github_repo_id:
+                    if not job.github_hook_id:
+                        result = job.add_github_webhook()
+
+                else:
+                    if old_github_api_hook_endpoint:
+                        # TODO check this
+                        OAUTH_APPS['github'].delete(
+                            old_github_api_hook_endpoint
+                        )
+
+                    result = job.add_github_webhook()
+
+
+                if result is not None:
+                    saved = result.status == 201
+                    if result.status != 201:
+                        flash(result.data.get(
+                            'message',
+                            "Unexpected response from GitHub. HTTP status %d" % result.status
+                        ), 'danger')
+                else:
+                    job.save()
+                    saved = True
+
+            else:
+                saved = False
+
         if saved:
             return redirect('/jobs/{job_slug}'.format(job_slug=job.slug))
 
@@ -95,6 +145,6 @@ def job_new_view():
 
     return render_template('job_edit.html',
                            job=job,
-                           edit_operation='new',
+                           edit_operation=edit_operation,
                            default_repo_type=default_repo_type,
                            )

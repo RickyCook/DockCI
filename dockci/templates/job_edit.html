@@ -26,11 +26,8 @@
 </style>
 <div class="panel panel-default">
   <div class="panel-body">
-    {% if edit_operation == 'new' -%}
-      <form class="form-horizontal bs-component" role="form" action="/jobs/new" method="POST">
-    {%- else -%}
-      <form class="form-horizontal bs-component" role="form" action="/jobs/{{ job.slug }}" method="POST">
-    {%- endif %}
+    <form class="form-horizontal bs-component" role="form" action="" id="jobForm" method="POST">
+      <input id="inputGithubRepoId" name="github_repo_id" value="{{ job.github_repo_id or '' }}" type="hidden">
       <div class="form-group">
         <label class="col-sm-2 control-label">Repo type</label>
         <ul id="repoTypeTabs" class="nav nav-tabs col-sm-10">
@@ -107,8 +104,10 @@
           inputSlug = $('#inputSlug'),
           inputName = $('#inputName'),
           inputRepo = $('#inputRepo'),
+          inputGithubRepoId = $('#inputGithubRepoId'),
           repoList = $('#repo-list'),
-          repoListGroup = repoList.parents('.form-group');
+          repoListGroup = repoList.parents('.form-group'),
+          jobForm = $('#jobForm');
       function handleProjectsList(result) {
         var repos = result['repos'],
             redirect = result['redirect']
@@ -128,6 +127,7 @@
             inputSlug.val(short_name)
             inputName.val(short_name)
             inputRepo.val(ev.data['clone_url'])
+            inputGithubRepoId.val(ev.data['full_name'])
           })
           repoList.append(liEl)
         }
@@ -177,6 +177,8 @@
           } else {
             inputGithubSecret.val('')
           }
+
+          jobForm.attr('href', '?repo_type=' + el.hash.substr(1))
 
           $(el).tab('show');
         })
