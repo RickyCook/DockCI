@@ -80,14 +80,52 @@ def job_new_view():
     ))
 
 
+def handle_github_hook(job, o_github_repo_id, o_github_api_hook_endpoint):
+    """ Try to add a GitHub hook for a job """
+    valid = model_flash(job, save=False)
+    if valid:
+        result = None
+        # Repo ID hasn't changed
+        if o_github_repo_id == job.github_repo_id:
+            if not job.github_hook_id:
+                result = job.add_github_webhook()
+
+        else:
+            if o_github_api_hook_endpoint:
+                # TODO check this
+                OAUTH_APPS['github'].delete(
+                    o_github_api_hook_endpoint
+                )
+
+            result = job.add_github_webhook()
+
+        if result is not None:
+            if result.status == 201:
+                return True
+
+            else:
+                flash(result.data.get(
+                    'message',
+                    ("Unexpected response from GitHub. "
+                     "HTTP status %d") % result.status
+                ), 'danger')
+                return False
+
+        else:
+            job.save()
+            return True
+
+    return False
+
+
 def job_input_view(job, edit_operation, fields):
     """ Generic view for job editing """
     if request.method == 'POST':
-        old_github_repo_id = job.github_repo_id
+        o_github_repo_id = job.github_repo_id
         try:
-            old_github_api_hook_endpoint = job.github_api_hook_endpoint
+            o_github_api_hook_endpoint = job.github_api_hook_endpoint
         except ValueError:
-            old_github_api_hook_endpoint = None
+            o_github_api_hook_endpoint = None
 
         saved = request_fill(
             job, fields,
@@ -95,37 +133,9 @@ def job_input_view(job, edit_operation, fields):
         )
 
         if request.args.get('repo_type', None) == 'github':
-            valid = model_flash(job, save=False)
-            if valid:
-                result = None
-                # Repo ID hasn't changed
-                if old_github_repo_id == job.github_repo_id:
-                    if not job.github_hook_id:
-                        result = job.add_github_webhook()
-
-                else:
-                    if old_github_api_hook_endpoint:
-                        # TODO check this
-                        OAUTH_APPS['github'].delete(
-                            old_github_api_hook_endpoint
-                        )
-
-                    result = job.add_github_webhook()
-
-                if result is not None:
-                    saved = result.status == 201
-                    if result.status != 201:
-                        flash(result.data.get(
-                            'message',
-                            ("Unexpected response from GitHub. "
-                             "HTTP status %d") % result.status
-                        ), 'danger')
-                else:
-                    job.save()
-                    saved = True
-
-            else:
-                saved = False
+            saved = handle_github_hook(
+                job, o_github_repo_id, o_github_api_hook_endpoint,
+            )
 
         if saved:
             return redirect('/jobs/{job_slug}'.format(job_slug=job.slug))
