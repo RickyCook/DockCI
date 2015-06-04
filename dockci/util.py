@@ -42,7 +42,9 @@ def request_fill(model_obj, fill_atts, save=True):
                 setattr(model_obj, att, None)
 
     if save:
-        model_flash(model_obj)
+        return model_flash(model_obj)
+
+    return True
 
 
 def model_flash(model_obj, save=True):
