@@ -97,6 +97,7 @@ def app_init_views():
     import dockci.views.external
     import dockci.views.job
     import dockci.views.oauth
+    import dockci.views.test
 
     setup_templates(APP)
 

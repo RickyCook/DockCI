@@ -88,6 +88,19 @@
       animation-timing-function: linear;
     }
   </style>
+  <script>
+    function error_message_for(status, error) {
+      if (error == '') {
+        if (status == 0) {
+          return 'Unknown error'
+        } else if (typeof(status) == 'number') {
+          return 'Unknown HTTP error: ' + status
+        } else {
+          return 'Unknown error'
+        }
+      }
+    }
+  </script>
 </head>
 
 <body>
