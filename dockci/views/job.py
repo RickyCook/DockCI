@@ -51,7 +51,7 @@ def job_view(slug):
                            page_size=page_size)
 
 
-@APP.route('/jobs/<slug>/edit', methods=('GET','POST'))
+@APP.route('/jobs/<slug>/edit', methods=('GET', 'POST'))
 @login_required
 def job_edit_view(slug):
     """
@@ -78,6 +78,7 @@ def job_new_view():
         'slug', 'name', 'repo', 'github_secret', 'github_repo_id',
         'hipchat_api_token', 'hipchat_room',
     ))
+
 
 def job_input_view(job, edit_operation, fields):
     """ Generic view for job editing """
@@ -111,13 +112,13 @@ def job_input_view(job, edit_operation, fields):
 
                     result = job.add_github_webhook()
 
-
                 if result is not None:
                     saved = result.status == 201
                     if result.status != 201:
                         flash(result.data.get(
                             'message',
-                            "Unexpected response from GitHub. HTTP status %d" % result.status
+                            ("Unexpected response from GitHub. "
+                             "HTTP status %d") % result.status
                         ), 'danger')
                 else:
                     job.save()

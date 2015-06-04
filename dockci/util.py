@@ -317,6 +317,7 @@ def tokengetter_for(oauth_app):
 
     return inner
 
+
 def get_token_for(oauth_app):
     """
     Get a token for the currently logged in user

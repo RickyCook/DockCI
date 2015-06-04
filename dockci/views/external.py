@@ -26,8 +26,12 @@ def git_projects_list_view(name):
     ]}
     return json.dumps(data)
 
-@APP.route('/aaa/<path:uri>')
-def aaa(uri):
+
+# @APP.route('/_oauth/<name>/<path:uri>')
+def oauth_debug(name, uri):
+    """
+    Debugger for arbitrary OAuth GET requests
+    """
     from flask import Response
-    return Response(json.dumps(OAUTH_APPS['github'].get(uri).data),
+    return Response(json.dumps(OAUTH_APPS[name].get(uri).data),
                     mimetype='application/json')

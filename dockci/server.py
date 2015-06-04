@@ -30,6 +30,7 @@ OAUTH_APPS_SCOPE_SERIALIZERS = {
     'github': lambda scope: ','.join(sorted(scope.split(','))),
 }
 
+
 def app_init():
     """
     Pre-run app setup
@@ -85,6 +86,7 @@ def app_init_oauth():
 
     for oauth_app in OAUTH_APPS.values():
         oauth_app.tokengetter(tokengetter_for(oauth_app))
+
 
 def app_init_views():
     """

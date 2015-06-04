@@ -142,7 +142,7 @@ class Job(Model):  # pylint:disable=too-few-public-methods
             try:
                 self.github_hook_id = result.data['id']
 
-            except:
+            except KeyError:
                 pass
 
             self.save()
