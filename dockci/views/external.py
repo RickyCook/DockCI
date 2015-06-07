@@ -3,14 +3,11 @@ APIs for external information
 """
 import json
 
-from flask_security import login_required
-
 from dockci.server import APP, OAUTH_APPS
 from dockci.views.oauth import oauth_required
 
 
 @APP.route('/<name>/projects.json')
-@login_required
 @oauth_required(['github'])
 def git_projects_list_view(name):
     """

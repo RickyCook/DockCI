@@ -8,7 +8,7 @@ from functools import wraps
 from urllib.parse import urlencode
 
 from flask import abort, flash, redirect, request, url_for
-from flask_security import current_user
+from flask_security import current_user, login_required
 
 from dockci.server import APP, OAUTH_APPS, OAUTH_APPS_SCOPE_SERIALIZERS
 from dockci.util import get_token_for
@@ -67,6 +67,7 @@ def oauth_required(acceptable=None, force_name=None):
         """
         Wrap func in the inner check, and possibly force_name helper
         """
+        @login_required
         @wraps(func)
         def inner_with_name(name, *args, **kwargs):
             """
