@@ -13,7 +13,7 @@ from dockci.util import request_fill
 
 
 @APP.route('/')
-def index():
+def index_view():
     """
     View to display the list of all jobs
     """
