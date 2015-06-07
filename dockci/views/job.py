@@ -110,10 +110,6 @@ def job_input_view(job, edit_operation, fields):
         if request.args.get('repo_type', None) != 'github':
             fill_data['github_repo_id'] = None
 
-        ##### TODO
-        # Test that this works. Should remove github repo id, etc if job type
-        # edited to manual
-
         saved = request_fill(
             job, fields,
             data=fill_data,
