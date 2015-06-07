@@ -31,7 +31,7 @@
       <div class="form-group">
         <label class="col-sm-2 control-label">Repo type</label>
         <ul id="repoTypeTabs" class="nav nav-tabs col-sm-10">
-          {% if config.model.github_key and config.model.github_secret %}
+          {% if config.model.github_key and config.model.github_secret and (edit_operation == 'new' or job.github_repo_id) %}
             <li><a id="githubTab" href="#github">GitHub</a></li>
           {% endif %}
           <li id="manualTab" class="active"><a href="#manual">Manual</a></li>
@@ -41,7 +41,11 @@
         <div id="github" class="tab-pane">
           <div class="form-group">
             <label for="inputName" class="col-sm-2 control-label">Settings from</label>
-            <ul id="repo-list" class="col-sm-10 form-control-static" style="list-style: none;"></ul>
+            {% if job.github_repo_id -%}
+              <p class="col-sm-10 form-control-static">{{ job.github_repo_id }}</p>
+            {%- else -%}
+              <ul id="repo-list" class="col-sm-10 form-control-static" style="list-style: none;"></ul>
+            {% endif %}
           </div>
         </div>
         <div id="manual" class="tab-pane active">
@@ -97,6 +101,7 @@
             <a class="btn btn-default" href="/jobs/{{ job.slug }}">Cancel</a>
           {%- endif %}
         </div>
+      </div>
     </form>
     <script type="text/javascript">
       var tabsRequiredFields = {},
@@ -105,9 +110,12 @@
           inputName = $('#inputName'),
           inputRepo = $('#inputRepo'),
           inputGithubRepoId = $('#inputGithubRepoId'),
+          inputGithubSecret = $('#inputGithubSecret'),
+          githubSecretGroup = inputGithubSecret.parents('.form-group'),
           repoList = $('#repo-list'),
           repoListGroup = repoList.parents('.form-group'),
-          jobForm = $('#jobForm');
+          jobForm = $('#jobForm'),
+          loadGithub = {{ 'true' if edit_operation == 'new' else 'false' }};
       function handleProjectsList(result) {
         var repos = result['repos'],
             redirect = result['redirect']
@@ -150,7 +158,6 @@
         var thisTabRequired = $('*[required]', $(el.hash));
         tabsRequiredFields[$(el).attr('href')] = thisTabRequired;
         $(el).click(function(ev) {
-          var inputGithubSecret = $('#inputGithubSecret')
           ev.preventDefault();
           $.each(tabsRequiredFields, function(idx, oldTabRequired) {
             $(oldTabRequired).attr('required', false)
@@ -165,17 +172,21 @@
 
           if (el.hash == '#github') {
             repoListGroup.removeClass('has-error')
-            inputGithubSecret.val('Auto filled on save')
-            repoList.empty()
-            repoList.append($('<li class="col-sm-12">Loading... Just a sec!</li>'))
-            $.getJSON(
-              '/github/projects.json',
-              {'return_to': document.location.toString()}
-            )
-              .done(handleProjectsList)
-              .fail(handleProjectsError)
+            githubSecretGroup.hide()
+
+            // Don't load github projects unless new job
+            if (loadGithub) {
+              repoList.empty()
+              repoList.append($('<li class="col-sm-12">Loading... Just a sec!</li>'))
+              $.getJSON(
+                '/github/projects.json',
+                {'return_to': document.location.toString()}
+              )
+                .done(handleProjectsList)
+                .fail(handleProjectsError)
+            }
           } else {
-            inputGithubSecret.val('')
+            githubSecretGroup.show()
           }
 
           jobForm.attr('href', '?repo_type=' + el.hash.substr(1))

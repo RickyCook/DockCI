@@ -29,16 +29,19 @@ def is_yaml_file(filename):
     return filename.check(file=True) and filename.ext == '.yaml'
 
 
-def request_fill(model_obj, fill_atts, save=True):
+def request_fill(model_obj, fill_atts, data=None, save=True):
     """
     Fill given model attrs from a POST request (and ignore other requests).
     Will save only if the save flag is True
     """
+    if data is None:
+        data = request.form
+
     if request.method == 'POST':
         for att in fill_atts:
-            if att in request.form and request.form[att] != '':
-                setattr(model_obj, att, request.form[att])
-            elif att not in request.form:
+            if att in data and data[att] != '':
+                setattr(model_obj, att, data[att])
+            elif att not in data:  # For check boxes
                 setattr(model_obj, att, None)
 
     if save:

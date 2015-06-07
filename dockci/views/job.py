@@ -8,7 +8,7 @@ from flask import abort, flash, redirect, render_template, request
 from flask_security import current_user, login_required
 
 from dockci.models.job import Job
-from dockci.server import APP, OAUTH_APPS
+from dockci.server import APP
 from dockci.util import model_flash, request_fill
 
 
@@ -62,6 +62,8 @@ def job_edit_view(slug):
         abort(404)
 
     return job_input_view(job, 'edit', (
+        # NOTE github_repo_id included so that it can be UNSET, but will never
+        # have its value passed through
         'name', 'repo', 'github_secret', 'github_repo_id',
         'hipchat_api_token', 'hipchat_room',
     ))
@@ -80,40 +82,20 @@ def job_new_view():
     ))
 
 
-def handle_github_hook(job, o_github_repo_id, o_github_api_hook_endpoint):
+def handle_github_hook(job):
     """ Try to add a GitHub hook for a job """
-    valid = model_flash(job, save=False)
-    if valid:
-        result = None
-        # Repo ID hasn't changed
-        if o_github_repo_id == job.github_repo_id:
-            if not job.github_hook_id:
-                result = job.add_github_webhook()
+    if model_flash(job, save=False):
+        result = job.add_github_webhook()  # auto saves on success
 
-        else:
-            if o_github_api_hook_endpoint:
-                # TODO check this
-                OAUTH_APPS['github'].delete(
-                    o_github_api_hook_endpoint
-                )
-
-            result = job.add_github_webhook()
-
-        if result is not None:
-            if result.status == 201:
-                return True
-
-            else:
-                flash(result.data.get(
-                    'message',
-                    ("Unexpected response from GitHub. "
-                     "HTTP status %d") % result.status
-                ), 'danger')
-                return False
-
-        else:
-            job.save()
+        if result.status == 201:
             return True
+
+        else:
+            flash(result.data.get(
+                'message',
+                ("Unexpected response from GitHub. "
+                 "HTTP status %d") % result.status
+            ), 'danger')
 
     return False
 
@@ -121,21 +103,25 @@ def handle_github_hook(job, o_github_repo_id, o_github_api_hook_endpoint):
 def job_input_view(job, edit_operation, fields):
     """ Generic view for job editing """
     if request.method == 'POST':
-        o_github_repo_id = job.github_repo_id
-        try:
-            o_github_api_hook_endpoint = job.github_api_hook_endpoint
-        except ValueError:
-            o_github_api_hook_endpoint = None
+        fill_data = request.form.to_dict()
+
+        # Filter out github properties if not a github repo, so that they are
+        # unset on the job
+        if request.args.get('repo_type', None) != 'github':
+            fill_data['github_repo_id'] = None
+
+        ##### TODO
+        # Test that this works. Should remove github repo id, etc if job type
+        # edited to manual
 
         saved = request_fill(
             job, fields,
+            data=fill_data,
             save=request.args.get('repo_type', None) != 'github',
         )
 
         if request.args.get('repo_type', None) == 'github':
-            saved = handle_github_hook(
-                job, o_github_repo_id, o_github_api_hook_endpoint,
-            )
+            saved = handle_github_hook(job)
 
         if saved:
             return redirect('/jobs/{job_slug}'.format(job_slug=job.slug))
