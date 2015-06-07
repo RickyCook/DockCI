@@ -28,7 +28,7 @@ def git_projects_list_view(name):
 
 
 # @APP.route('/_oauth/<name>/<path:uri>')
-def oauth_debug(name, uri):
+def oauth_debug_view(name, uri):
     """
     Debugger for arbitrary OAuth GET requests
     """
