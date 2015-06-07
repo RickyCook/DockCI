@@ -4,6 +4,11 @@
 - Upgrade YAML model #146
 - Fix email #147
 - Add users, related UI, protect some forms #147
+- New job cancel button doesn't 404 #149
+- Get GitHub OAuth token for users #149
+- Import from GitHub on new job form #149
+- Add GitHub web hook on new job #149
+- OAuth reauthenticate when scope changes #149
 - Remove DEBIAN_MIRROR override #150
 - Server host tests on config page #151
 

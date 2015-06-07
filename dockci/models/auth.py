@@ -18,6 +18,8 @@ class User(Model, UserMixin):
     active = LoadOnAccess(input_transform=bool, default=False)
     confirmed_at = LoadOnAccess()
 
+    oauth_tokens = LoadOnAccess(generate=lambda _: {})
+
     roles = []
 
     @property

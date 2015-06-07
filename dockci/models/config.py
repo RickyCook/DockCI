@@ -61,6 +61,9 @@ class Config(SingletonModel):  # pylint:disable=too-few-public-methods
     mail_default_sender = LoadOnAccess(default=lambda _:
                                        "dockci@%s" % socket.gethostname())
 
+    github_key = LoadOnAccess(default=lambda _: None)
+    github_secret = LoadOnAccess(default=lambda _: None)
+
     security_password_salt = LoadOnAccess(generate=lambda _: uuid4().hex)
     security_registerable = LoadOnAccess(default=True)
     security_recoverable = LoadOnAccess(default=True)

@@ -12,12 +12,13 @@ import json
 import datetime
 
 from contextlib import contextmanager
+from functools import wraps
 from ipaddress import ip_address
 
 import docker.errors
 
 from flask import flash, request
-from flask_security import login_required
+from flask_security import current_user, login_required
 from yaml_model import ValidationError
 
 
@@ -28,29 +29,46 @@ def is_yaml_file(filename):
     return filename.check(file=True) and filename.ext == '.yaml'
 
 
-def request_fill(model_obj, fill_atts, save=True):
+def request_fill(model_obj, fill_atts, data=None, save=True):
     """
     Fill given model attrs from a POST request (and ignore other requests).
     Will save only if the save flag is True
     """
+    if data is None:
+        data = request.form
+
     if request.method == 'POST':
         for att in fill_atts:
-            if att in request.form:
-                setattr(model_obj, att, request.form[att])
-            else:
+            if att in data and data[att] != '':
+                setattr(model_obj, att, data[att])
+            elif att not in data:  # For check boxes
                 setattr(model_obj, att, None)
 
-        # TODO move the flash to views
-        if save:
-            try:
-                model_obj.save()
-                flash(u"%s saved" % model_obj.__class__.__name__.title(),
-                      'success')
-                return True
+    if save:
+        return model_flash(model_obj)
 
-            except ValidationError as ex:
-                flash(ex.messages, 'danger')
-                return False
+    return True
+
+
+def model_flash(model_obj, save=True):
+    """
+    Save a model object, displaying appropriate flash messages
+    """
+    # TODO move the flash to views
+    try:
+        if save:
+            model_obj.save()
+            flash(u"%s saved" % model_obj.__class__.__name__.title(),
+                  'success')
+
+        else:
+            model_obj.validate()
+
+        return True
+
+    except ValidationError as ex:
+        flash(ex.messages, 'danger')
+        return False
 
 
 def default_gateway():
@@ -120,6 +138,7 @@ def login_or_github_required(func):
     """
     login_required_func = login_required(func)
 
+    @wraps(func)
     def inner(*args, **kwargs):
         """
         Check headers, pass to func or login_required decorator on outcome
@@ -289,6 +308,36 @@ class FauxDockerLog(object):
             self.handle.write(json.dumps(self.defaults).encode())
             self.handle.write('\n'.encode())
             self.handle.flush()
+
+
+def tokengetter_for(oauth_app):
+    """
+    Flask security tokengetter for an endpoint
+    """
+    def inner():
+        """
+        Create a tokengetter for the current_user model
+        """
+        return get_token_for(oauth_app)
+
+    return inner
+
+
+def get_token_for(oauth_app):
+    """
+    Get a token for the currently logged in user
+    """
+    if current_user.is_authenticated():
+        from dockci.server import OAUTH_APPS_SCOPES
+        try:
+            detail = current_user.oauth_tokens[oauth_app.name]
+            if detail['scope'] == OAUTH_APPS_SCOPES[oauth_app.name]:
+                return (detail['key'], detail['secret'])
+
+        except (KeyError, TypeError):
+            pass
+
+    return None
 
 
 def guess_multi_value(value):

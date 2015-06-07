@@ -15,56 +15,187 @@
   {% endif %}
 {%- endblock %}
 {% block content %}
-{% if edit_operation == 'new' -%}
-  <form class="form-horizontal" role="form" action="/jobs/new" method="POST">
-{%- else -%}
-  <form class="form-horizontal" role="form" action="/jobs/{{ job.slug }}" method="POST">
-{%- endif %}
-  <div class="form-group">
-    <label for="inputSlug" class="col-sm-2 control-label">Slug</label>
-    <div class="col-sm-10">
-      {% if edit_operation == 'new' -%}
-        <input required class="form-control" id="inputSlug" name="slug" placeholder="Slug" value="{{ job.slug or '' }}">
-      {%- else -%}
-        <p class="form-control-static">{{ job.slug }}</p>
-      {% endif %}
-    </div>
+<style type="text/css">
+  .panel-body { padding-top: 0px; }
+  .nav-tabs li.active { background-color: rgba(255, 255, 255, 0.1); }
+  #repo-list { list-style: none; }
+  #repo-list li {
+    padding-left: 0px;
+    overflow: hidden;
+  }
+</style>
+<div class="panel panel-default">
+  <div class="panel-body">
+    <form class="form-horizontal bs-component" role="form" action="" id="jobForm" method="POST">
+      <input id="inputGithubRepoId" name="github_repo_id" value="{{ job.github_repo_id or '' }}" type="hidden">
+      <div class="form-group">
+        <label class="col-sm-2 control-label">Repo type</label>
+        <ul id="repoTypeTabs" class="nav nav-tabs col-sm-10">
+          {% if config.model.github_key and config.model.github_secret and (edit_operation == 'new' or job.github_repo_id) %}
+            <li><a id="githubTab" href="#github">GitHub</a></li>
+          {% endif %}
+          <li id="manualTab" class="active"><a href="#manual">Manual</a></li>
+        </ul>
+      </div>
+      <div class="tab-content">
+        <div id="github" class="tab-pane">
+          <div class="form-group">
+            <label for="inputName" class="col-sm-2 control-label">Settings from</label>
+            {% if job.github_repo_id -%}
+              <p class="col-sm-10 form-control-static">{{ job.github_repo_id }}</p>
+            {%- else -%}
+              <ul id="repo-list" class="col-sm-10 form-control-static" style="list-style: none;"></ul>
+            {% endif %}
+          </div>
+        </div>
+        <div id="manual" class="tab-pane active">
+          <div class="form-group">
+            <label for="inputRepo" class="col-sm-2 control-label">Git Repository</label>
+            <div class="col-sm-10">
+              <input required class="form-control" id="inputRepo" name="repo" placeholder="https://your.repo.url" value="{{ job.repo }}">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputSlug" class="col-sm-2 control-label">Slug</label>
+        <div class="col-sm-10">
+          {% if edit_operation == 'new' -%}
+            <input required class="form-control" id="inputSlug" name="slug" placeholder="Slug" value="{{ job.slug or '' }}">
+          {%- else -%}
+            <p class="form-control-static">{{ job.slug }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputName" class="col-sm-2 control-label">Name</label>
+        <div class="col-sm-10">
+          <input required class="form-control" id="inputName" name="name" placeholder="Name" value="{{ job.name }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputGithubSecret" class="col-sm-2 control-label">GitHub Webhook Secret</label>
+        <div class="col-sm-10">
+          <input class="form-control" id="inputGithubSecret" name="github_secret" placeholder="*****">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputHipchatApiToken" class="col-sm-2 control-label">HipChat API Token</label>
+        <div class="col-sm-10">
+          <input class="form-control" type="password" id="inputHipchatApiToken" name="hipchat_api_token" value="{{ job.hipchat_api_token }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="inputHipchatRoom" class="col-sm-2 control-label">HipChat Room</label>
+        <div class="col-sm-10">
+          <input class="form-control" id="inputHipchatRoom" name="hipchat_room" value="{{ job.hipchat_room }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-sm-2">&nbsp;</div>
+        <div class="col-sm-10">
+          <button type="submit" class="btn btn-primary">Save</button>
+          {% if edit_operation == 'new' -%}
+            <a class="btn btn-default" href="/">Cancel</a>
+          {%- else -%}
+            <a class="btn btn-default" href="/jobs/{{ job.slug }}">Cancel</a>
+          {%- endif %}
+        </div>
+      </div>
+    </form>
+    <script type="text/javascript">
+      var tabsRequiredFields = {},
+          githubRepos = {},
+          inputSlug = $('#inputSlug'),
+          inputName = $('#inputName'),
+          inputRepo = $('#inputRepo'),
+          inputGithubRepoId = $('#inputGithubRepoId'),
+          inputGithubSecret = $('#inputGithubSecret'),
+          githubSecretGroup = inputGithubSecret.parents('.form-group'),
+          repoList = $('#repo-list'),
+          repoListGroup = repoList.parents('.form-group'),
+          jobForm = $('#jobForm'),
+          loadGithub = {{ 'true' if edit_operation == 'new' else 'false' }};
+      function handleProjectsList(result) {
+        var repos = result['repos'],
+            redirect = result['redirect']
+        if (typeof(redirect) != 'undefined') {
+          document.location = redirect
+          return
+        }
+        repoList.empty();
+        for (idx = 0; idx < repos.length; idx++) {
+          liEl = $('<li class="col-sm-4"></li>')
+          linkEl = $('<a href="javascript:void(0)">' + repos[idx]['full_name'] + '</a>')
+          liEl.append(linkEl)
+          linkEl.click(repos[idx], function(ev) {
+            short_name = ev.data['full_name'].split('/')
+            short_name = short_name.slice(1, short_name.length)
+            short_name = short_name.join('/')
+            inputSlug.val(short_name)
+            inputName.val(short_name)
+            inputRepo.val(ev.data['clone_url'])
+            inputGithubRepoId.val(ev.data['full_name'])
+          })
+          repoList.append(liEl)
+        }
+      }
+      function handleProjectsError(jqxhr, status, error) {
+        repoListGroup.addClass('has-error')
+        repoList.empty()
+        if (error == '') {
+          if (status == 0) {
+            error = 'Unknown error'
+          } else if (typeof(status) == 'number') {
+            error = 'Unknown HTTP error: ' + status
+          } else {
+            error = 'Unknown error'
+          }
+        }
+        repoList.append($('<li class="col-sm-12">' + error + '</li>'))
+      }
+      $('#repoTypeTabs a').each(function(idx, el) {
+        var thisTabRequired = $('*[required]', $(el.hash));
+        tabsRequiredFields[$(el).attr('href')] = thisTabRequired;
+        $(el).click(function(ev) {
+          ev.preventDefault();
+          $.each(tabsRequiredFields, function(idx, oldTabRequired) {
+            $(oldTabRequired).attr('required', false)
+          })
+          thisTabRequired.attr('required', true)
+
+          if (el.hash == '#manual') {
+            inputGithubSecret.attr('disabled', false)
+          } else {
+            inputGithubSecret.attr('disabled', true)
+          }
+
+          if (el.hash == '#github') {
+            repoListGroup.removeClass('has-error')
+            githubSecretGroup.hide()
+
+            // Don't load github projects unless new job
+            if (loadGithub) {
+              repoList.empty()
+              repoList.append($('<li class="col-sm-12">Loading... Just a sec!</li>'))
+              $.getJSON(
+                '/github/projects.json',
+                {'return_to': document.location.toString()}
+              )
+                .done(handleProjectsList)
+                .fail(handleProjectsError)
+            }
+          } else {
+            githubSecretGroup.show()
+          }
+
+          jobForm.attr('href', '?repo_type=' + el.hash.substr(1))
+
+          $(el).tab('show');
+        })
+      })
+      $('#{{ default_repo_type }}Tab').click()
+    </script>
   </div>
-  <div class="form-group">
-    <label for="inputName" class="col-sm-2 control-label">Name</label>
-    <div class="col-sm-10">
-      <input required class="form-control" id="inputName" name="name" placeholder="Name" value="{{ job.name }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputRepo" class="col-sm-2 control-label">Git Repository</label>
-    <div class="col-sm-10">
-      <input required class="form-control" id="inputRepo" name="repo" placeholder="https://your.repo.url" value="{{ job.repo }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputGithubSecret" class="col-sm-2 control-label">GitHub Webhook Secret</label>
-    <div class="col-sm-10">
-      <input class="form-control" id="inputGithubSecret" name="github_secret" placeholder="*****">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputHipchatApiToken" class="col-sm-2 control-label">HipChat API Token</label>
-    <div class="col-sm-10">
-      <input class="form-control" type="password" id="inputHipchatApiToken" name="hipchat_api_token" value="{{ job.hipchat_api_token }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <label for="inputHipchatRoom" class="col-sm-2 control-label">HipChat Room</label>
-    <div class="col-sm-10">
-      <input class="form-control" id="inputHipchatRoom" name="hipchat_room" value="{{ job.hipchat_room }}">
-    </div>
-  </div>
-  <div class="form-group">
-    <div class="col-sm-2">&nbsp;</div>
-    <div class="col-sm-10">
-      <button type="submit" class="btn btn-primary">Save</button>
-      <a class="btn btn-default" href="/jobs/{{ job.slug }}">Cancel</a>
-    </div>
-</form>
+</div>
 {% endblock %}
