@@ -25,7 +25,9 @@ from yaml_model import (LoadOnAccess,
                         )
 
 from dockci.exceptions import AlreadyBuiltError, AlreadyRunError
-from dockci.models.build_stages import BuildStage
+from dockci.models.build_meta.config import BuildConfig
+from dockci.models.build_meta.stages import BuildStage
+from dockci.models.build_meta.stages_prepare import WorkdirStage
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
 from dockci.server import CONFIG
@@ -236,7 +238,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
             with tempfile.TemporaryDirectory() as workdir:
                 workdir = py.path.local(workdir)
                 pre_build = (stage() for stage in (
-                    lambda: self._run_prep_workdir(workdir),
+                    lambda: self._stage(
+                        runnable=WorkdirStage(self, workdir)
+                    ).returncode == 0,
                     lambda: self._run_git_info(workdir),
                     lambda: self._run_git_changes(workdir),
                     lambda: self._run_tag_version(workdir),
@@ -280,31 +284,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
             self.complete_ts = datetime.now()
             self.save()
-
-    def _run_prep_workdir(self, workdir):
-        """
-        Clone and checkout the build
-        """
-        stage = self._stage(
-            'git_prepare', workdir=workdir,
-            cmd_args=(
-                ['git', 'clone', self.repo, workdir.strpath],
-                ['git',
-                 '-c', 'advice.detachedHead=false',
-                 'checkout', self.commit
-                 ],
-            )
-        )
-        result = stage.returncode == 0
-
-        # check for, and load build config
-        build_config_file = workdir.join(BuildConfig.slug)
-        if build_config_file.check(file=True):
-            # pylint:disable=no-member
-            self.build_config.load(data_file=build_config_file)
-            self.build_config.save()
-
-        return result
 
     def _run_git_info(self, workdir):
         """
@@ -804,7 +783,11 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         except Exception:  # pylint:disable=broad-except
             print(traceback.format_exc())
 
-    def _stage(self, stage_slug, runnable=None, workdir=None, cmd_args=None):
+    def _stage(self,
+               stage_slug=None,
+               runnable=None,
+               workdir=None,
+               cmd_args=None):
         """
         Create and save a new build stage, running the given args and saving
         its output
@@ -814,6 +797,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                                             build=self,
                                             cwd=workdir,
                                             cmd_args=cmd_args)
+        elif isinstance(runnable, BuildStage):
+            stage = runnable
+            stage_slug = runnable.slug
         else:
             stage = BuildStage(slug=stage_slug, build=self, runnable=runnable)
 
@@ -826,29 +812,3 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         stage.run()
         return stage
-
-
-class BuildConfig(Model):  # pylint:disable=too-few-public-methods
-    """
-    Build config, loaded from the repo
-    """
-
-    slug = 'dockci.yaml'
-
-    build = OnAccess(lambda self: Build(self.build_slug))
-    build_slug = OnAccess(lambda self: self.build.slug)  # TODO infinite loop
-
-    build_output = LoadOnAccess(default=lambda _: {})
-    services = LoadOnAccess(default=lambda _: {})
-
-    def __init__(self, build):
-        super(BuildConfig, self).__init__()
-
-        assert build is not None, "Build is given"
-
-        self.build = build
-        self.build_slug = build.slug
-
-    def data_file_path(self):
-        # Our data file path is <build output>/<slug>
-        return self.build.build_output_path().join(BuildConfig.slug)
