@@ -6,7 +6,6 @@ import json
 import logging
 import random
 import re
-import subprocess
 import tempfile
 
 from datetime import datetime
@@ -26,8 +25,8 @@ from yaml_model import (LoadOnAccess,
 
 from dockci.exceptions import AlreadyBuiltError, AlreadyRunError
 from dockci.models.build_meta.config import BuildConfig
-from dockci.models.build_meta.stages import BuildStage
-from dockci.models.build_meta.stages_prepare import WorkdirStage
+from dockci.models.build_meta.stages import BuildStage, BuildStageBase
+from dockci.models.build_meta.stages_prepare import WorkdirStage, GitInfoStage
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
 from dockci.server import CONFIG
@@ -80,7 +79,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     )
     build_stage_slugs = LoadOnAccess(generate=lambda _: [])
     build_stages = OnAccess(lambda self: [
-        BuildStage(slug=slug, build=self)
+        BuildStage(build=self, slug=slug)
         for slug
         in self.build_stage_slugs
     ])
@@ -241,7 +240,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     lambda: self._stage(
                         runnable=WorkdirStage(self, workdir)
                     ).returncode == 0,
-                    lambda: self._run_git_info(workdir),
+                    lambda: self._stage(
+                        runnable=GitInfoStage(self, workdir)
+                    ).returncode == 0,
                     lambda: self._run_git_changes(workdir),
                     lambda: self._run_tag_version(workdir),
                     lambda: self._run_provision(workdir),
@@ -285,74 +286,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
             self.complete_ts = datetime.now()
             self.save()
 
-    def _run_git_info(self, workdir):
-        """
-        Get info about the current commit from git
-        """
-
-        def runnable(handle):
-            """
-            Execute git to retrieve info
-            """
-            def run_proc(*args):
-                """
-                Run, and wait for a process with default args
-                """
-                proc = subprocess.Popen(args,
-                                        stdout=subprocess.PIPE,
-                                        stderr=handle,
-                                        cwd=workdir.strpath,
-                                        )
-                proc.wait()
-                return proc
-
-            largest_returncode = 0
-            properties_empty = True
-
-            properties = {
-                'Author name': ('git_author_name', '%an'),
-                'Author email': ('git_author_email', '%ae'),
-                'Committer name': ('git_committer_name', '%cn'),
-                'Committer email': ('git_committer_email', '%ce'),
-                'Full SHA-1 hash': ('commit', '%H'),
-            }
-            for display_name, (attr_name, format_string) in properties.items():
-                proc = run_proc('git', 'show',
-                                '-s',
-                                '--format=format:%s' % format_string,
-                                'HEAD')
-
-                largest_returncode = max(largest_returncode, proc.returncode)
-                value = proc.stdout.read().decode().strip()
-
-                if value != '' and proc.returncode == 0:
-                    setattr(self, attr_name, value)
-                    properties_empty = False
-                    handle.write((
-                        "%s is %s\n" % (display_name, value)
-                    ).encode())
-
-            ancestor_build = self.job.latest_build_ancestor(workdir,
-                                                            self.commit)
-            if ancestor_build:
-                properties_empty = False
-                handle.write((
-                    "Ancestor build is %s\n" % ancestor_build.slug
-                ).encode())
-                self.ancestor_build = ancestor_build
-
-            if properties_empty:
-                handle.write("No information about the git commit could be "
-                             "derived\n".encode())
-
-            else:
-                self.save()
-
-            return proc.returncode
-
-        stage = self._stage('git_info', workdir=workdir, runnable=runnable)
-        return stage.returncode == 0
-
     def _run_git_changes(self, workdir):
         """
         Get a list of changes from git between now and the most recently built
@@ -361,8 +294,10 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         # TODO fix YAML model to return None rather than an empty model so that
         #      if self.ancestor_build will work
         if self.has_value('ancestor_build'):
-            revision_range_string = '%s..%s' % (self.ancestor_build.commit,
-                                                self.commit)
+            revision_range_string = '%s..%s' % (
+                self.ancestor_build.commit,  # pylint:disable=no-member
+                self.commit,
+            )
             self._stage(
                 'git_changes',
                 workdir=workdir,
@@ -774,8 +709,8 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         import traceback
         try:
             BuildStage(
-                stage_slug,
                 self,
+                stage_slug,
                 lambda handle: handle.write(
                     bytes(traceback.format_exc(), 'utf8')
                 )
@@ -793,15 +728,15 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         its output
         """
         if cmd_args:
-            stage = BuildStage.from_command(slug=stage_slug,
-                                            build=self,
+            stage = BuildStage.from_command(build=self,
+                                            slug=stage_slug,
                                             cwd=workdir,
                                             cmd_args=cmd_args)
-        elif isinstance(runnable, BuildStage):
+        elif isinstance(runnable, BuildStageBase):
             stage = runnable
             stage_slug = runnable.slug
         else:
-            stage = BuildStage(slug=stage_slug, build=self, runnable=runnable)
+            stage = BuildStage(build=self, slug=stage_slug, runnable=runnable)
 
         logging.getLogger('dockci.build.stages').debug(
             "Starting '%s' build stage for build '%s'", stage_slug, self.slug

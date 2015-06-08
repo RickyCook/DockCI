@@ -7,23 +7,26 @@ import subprocess
 from dockci.exceptions import AlreadyRunError
 
 
-class BuildStage(object):
+class BuildStageBase(object):
     """
     A logged stage to a build
     """
-    returncode = None
 
-    def __init__(self, slug, build, runnable=None, workdir=None):
-        self.slug = slug
+    def __init__(self, build):
         self.build = build
-        self.workdir = workdir
-        self._runnable = runnable
+        self.returncode = None
+
+    def runnable(self, handle):
+        """ Executeable portion of the stage """
+        raise NotImplementedError("You must override the 'runnable' method")
 
     def data_file_path(self):
         """
         File that stage output is logged to
         """
-        return self.build.build_output_path().join('%s.log' % self.slug)
+        return self.build.build_output_path().join(
+            '%s.log' % self.slug  # pylint:disable=no-member
+        )
 
     def run(self):
         """
@@ -39,30 +42,40 @@ class BuildStage(object):
 
         return self.returncode == 0
 
+
+class BuildStage(BuildStageBase):
+    """ Ad-hoc build stage """
+
+    def __init__(self, build, slug, runnable=None, workdir=None):
+        super(BuildStage, self).__init__(build)
+        self.slug = slug
+        self.workdir = workdir
+        self._runnable = runnable
+
     def runnable(self, *args, **kwargs):
         """ Wrapper for runnable to avoid ambiguity """
         return self._runnable(*args, **kwargs)
 
-    # TODO this should really be a subclass or some such
     @classmethod
-    def from_command(cls, slug, build, cwd, cmd_args):
+    def from_command(cls, build, slug, cwd, cmd_args):
         """
         Create a BuildStage object from a system command
         """
-        return CommandBuildStage(slug, build, cwd, cmd_args)
+        stage = CommandBuildStage(build, cwd, cmd_args)
+        setattr(stage, 'slug', slug)
+        return stage
 
 
-class CommandBuildStage(BuildStage):
+class CommandBuildStage(BuildStageBase):  # pylint:disable=abstract-method
     """
     A build stage that represents a series of commands
     """
 
     # pylint:disable=arguments-differ
-    def __init__(self, slug, build, workdir, cmd_args):
+    def __init__(self, build, workdir, cmd_args):
         assert len(cmd_args) > 0, "cmd_args are given"
-        super(CommandBuildStage, self).__init__(
-            slug, build, workdir=workdir,
-        )
+        super(CommandBuildStage, self).__init__(build)
+        self.workdir = workdir
         self.cmd_args = cmd_args
 
     def runnable(self, handle):
