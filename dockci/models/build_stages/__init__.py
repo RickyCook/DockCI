@@ -36,6 +36,7 @@ class BuildStage(object):
         with self.data_file_path().open('wb') as handle:
             self.returncode = self.runnable(handle)
 
+    # TODO this should really be a subclass or some such
     @classmethod
     def from_command(cls, slug, build, cwd, cmd_args):
         """
