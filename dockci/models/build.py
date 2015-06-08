@@ -189,6 +189,21 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         return True
 
     @property
+    def url(self):
+        """ URL for this build """
+        return url_for('build_view',
+                       job_slug=self.job.slug,
+                       build_slug=self.slug)
+
+    @property
+    def url_ext(self):
+        """ URL for this job """
+        return url_for('build_view',
+                       job_slug=self.job.slug,
+                       build_slug=self.slug,
+                       _external=True)
+
+    @property
     def state(self):
         """
         Current state that the build is in
