@@ -1,4 +1,4 @@
 gnureadline==6.3.3
-ipdb==0.8
+ipdb==0.8.1
 ipython==3.1.0
 pip-tools==0.3.6
