@@ -353,7 +353,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     return False
 
                 if self.job.github_repo_id:
-                    self._run_external_status()
+                    self._run_external_status('start')
 
                 if not all(prepare):
                     self.result = 'error'
@@ -613,7 +613,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
             handle.flush()
             return False
 
-    def _run_external_status(self):
+    def _run_external_status(self, suffix):
         """
         Create a new pending status for this build in GitHub
         """
@@ -630,7 +630,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
             handle.flush()
             return success
 
-        return self._stage('external_status', runnable=runnable).returncode
+        return self._stage(
+            'external_status_%s' % suffix, runnable=runnable
+        ).returncode
 
     def _run_provision(self, workdir):
         """
