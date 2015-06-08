@@ -3,6 +3,8 @@ APIs for external information
 """
 import json
 
+from flask import request
+
 from dockci.server import APP, OAUTH_APPS
 from dockci.views.oauth import oauth_required
 
@@ -13,7 +15,10 @@ def git_projects_list_view(name):
     """
     API for GitHub projects list
     """
-    data = OAUTH_APPS[name].get('user/repos').data
+    data = OAUTH_APPS[name].get('user/repos', {
+        'per_page': request.args.get('per_page', 18),
+        'page': request.args.get('page', 1),
+    }).data
     data = {'repos': [
         {
             key: value
