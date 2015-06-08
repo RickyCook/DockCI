@@ -17,7 +17,7 @@ import py.path  # pylint:disable=import-error
 
 from docker.utils import kwargs_from_env
 from flask import url_for
-from yaml_model import (LoadOnAccess,
+from yaml_model import (LoadOnAccess,  # pylint:disable=duplicate-code
                         Model,
                         ModelReference,
                         OnAccess,
@@ -211,7 +211,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
             self.commit,
         )
 
-
     @property
     def state(self):
         """
@@ -385,10 +384,11 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         finally:
             try:
+                self._run_external_status('complete')
                 self._run_cleanup()
 
             except Exception:  # pylint:disable=broad-except
-                self._error_stage('cleanup_error')
+                self._error_stage('post_error')
 
             self.complete_ts = datetime.now()
             self.save()

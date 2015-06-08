@@ -40,7 +40,6 @@ def run_build_async(job_slug, build_slug):
             job = Job(job_slug)
             build = Build(job=job, slug=build_slug)
             build_okay = build._run_now()  # pylint:disable=protected-access
-            build._run_external_status('complete')
 
             # Send the failure message
             if not build_okay:
