@@ -17,7 +17,7 @@ import py.path  # pylint:disable=import-error
 
 from docker.utils import kwargs_from_env
 from flask import url_for
-from yaml_model import (LoadOnAccess,  # pylint:disable=duplicate-code
+from yaml_model import (LoadOnAccess,
                         Model,
                         ModelReference,
                         OnAccess,
