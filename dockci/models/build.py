@@ -28,7 +28,7 @@ from dockci.exceptions import AlreadyBuiltError
 from dockci.exceptions import AlreadyRunError
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
-from dockci.server import CONFIG
+from dockci.server import CONFIG, OAUTH_APPS
 from dockci.util import (bytes_human_readable,
                          docker_ensure_image,
                          FauxDockerLog,
@@ -204,6 +204,15 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                        _external=True)
 
     @property
+    def github_api_status_endpoint(self):
+        """ Status endpoint for GitHub API """
+        return '%s/commits/%s/statuses' % (
+            self.job.github_api_repo_endpoint,
+            self.commit,
+        )
+
+
+    @property
     def state(self):
         """
         Current state that the build is in
@@ -328,15 +337,25 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         try:
             with tempfile.TemporaryDirectory() as workdir:
                 workdir = py.path.local(workdir)
-                pre_build = (stage() for stage in (
+                get_info = (stage() for stage in (
                     lambda: self._run_prep_workdir(workdir),
                     lambda: self._run_git_info(workdir),
-                    lambda: self._run_git_changes(workdir),
                     lambda: self._run_tag_version(workdir),
+                ))
+                prepare = (stage() for stage in (
+                    lambda: self._run_git_changes(workdir),
                     lambda: self._run_provision(workdir),
                     lambda: self._run_build(workdir),
                 ))
-                if not all(pre_build):
+
+                if not all(get_info):
+                    self.result = 'error'
+                    return False
+
+                if self.job.github_repo_id:
+                    self._run_external_status()
+
+                if not all(prepare):
                     self.result = 'error'
                     return False
 
@@ -519,6 +538,54 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         # TODO don't spoof the return; just ignore output elsewhere
         return True  # stage result is irrelevant
+
+    def _run_external_status(self):
+        """
+        Create a new pending status for this build in GitHub
+        """
+        def runnable(handle):
+            """ Send the build started status to external providers """
+            success = None
+            if self.job.github_repo_id:
+                handle.write("Submitting status to GitHub... ".encode())
+                handle.flush()
+                token_data = self.job.github_auth_user.oauth_tokens['github']
+                response = OAUTH_APPS['github'].post(
+                    self.github_api_status_endpoint,
+                    {
+                        'state': 'pending',
+                        'target_url': self.url_ext,
+                        'description': "The DockCI build is in progress",
+                        'context': 'continuous-integration/dockci/push',
+                    },
+                    format='json',
+                    token=(token_data['key'], token_data['secret']),
+                )
+
+                if response.status == 201:
+                    handle.write("DONE!\n".encode())
+                    handle.flush()
+                    success = True
+
+                else:
+                    handle.write("FAILED!\n".encode())
+                    handle.write(("%s\n" % response.data.get(
+                        'message',
+                        "Unexpected response from GitHub. HTTP status %d" % (
+                            response.status,
+                        )
+                    )).encode())
+                    handle.flush()
+                    success = False
+
+            if success is None:
+                handle.write("No external providers with status updates "
+                             "configured\n".encode())
+
+            handle.flush()
+            return success
+
+        return self._stage('external_status', runnable=runnable).returncode
 
     def _run_provision(self, workdir):
         """
