@@ -539,6 +539,80 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         # TODO don't spoof the return; just ignore output elsewhere
         return True  # stage result is irrelevant
 
+    def send_github_status(self, state=None, state_msg=None, context='push'):
+        """
+        Send a state to the GitHub commit represented by this build. If state
+        not set, is defaulted to something that makes sense, given the data in
+        this model
+        """
+
+        if state is None:
+            if self.state == 'running':
+                state = 'pending'
+            elif self.state == 'success':
+                state = 'success'
+            elif self.state == 'fail':
+                state = 'failure'
+            elif self.state == 'error':
+                state = 'error'
+            else:
+                state = 'error'
+                state_msg = "is in an unknown state: '%s'" % state
+
+        if state_msg is None:
+            if state == 'pending':
+                state_msg = "is in progress"
+            elif state == 'success':
+                state_msg = "completed successfully"
+            elif state == 'fail':
+                state_msg = "completed with failing tests"
+            elif state == 'error':
+                state_msg = "failed to complete due to an error"
+
+        if state_msg is not None:
+            extra_dict = dict(description="The DockCI build %s" % state_msg)
+
+        token_data = self.job.github_auth_user.oauth_tokens['github']
+        return OAUTH_APPS['github'].post(
+            self.github_api_status_endpoint,
+            dict(state=state,
+                 target_url=self.url_ext,
+                 context='continuous-integration/dockci/%s' % context,
+                 **extra_dict),
+            format='json',
+            token=(token_data['key'], token_data['secret']),
+        )
+
+    def _send_github_status_stage(self,
+                                  handle,
+                                  state=None,
+                                  state_msg=None,
+                                  context='push'):
+        """
+        Update the GitHub status for the job, handling feedback by writing to a
+        log handle. Expected to be run from inside a stage in order to write to
+        the build log
+        """
+        handle.write("Submitting status to GitHub... ".encode())
+        handle.flush()
+        response = self.send_github_status(state, state_msg, context)
+
+        if response.status == 201:
+            handle.write("DONE!\n".encode())
+            handle.flush()
+            return True
+
+        else:
+            handle.write("FAILED!\n".encode())
+            handle.write(("%s\n" % response.data.get(
+                'message',
+                "Unexpected response from GitHub. HTTP status %d" % (
+                    response.status,
+                )
+            )).encode())
+            handle.flush()
+            return False
+
     def _run_external_status(self):
         """
         Create a new pending status for this build in GitHub
@@ -547,36 +621,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
             """ Send the build started status to external providers """
             success = None
             if self.job.github_repo_id:
-                handle.write("Submitting status to GitHub... ".encode())
-                handle.flush()
-                token_data = self.job.github_auth_user.oauth_tokens['github']
-                response = OAUTH_APPS['github'].post(
-                    self.github_api_status_endpoint,
-                    {
-                        'state': 'pending',
-                        'target_url': self.url_ext,
-                        'description': "The DockCI build is in progress",
-                        'context': 'continuous-integration/dockci/push',
-                    },
-                    format='json',
-                    token=(token_data['key'], token_data['secret']),
-                )
-
-                if response.status == 201:
-                    handle.write("DONE!\n".encode())
-                    handle.flush()
-                    success = True
-
-                else:
-                    handle.write("FAILED!\n".encode())
-                    handle.write(("%s\n" % response.data.get(
-                        'message',
-                        "Unexpected response from GitHub. HTTP status %d" % (
-                            response.status,
-                        )
-                    )).encode())
-                    handle.flush()
-                    success = False
+                success = self._send_github_status_stage(handle)
 
             if success is None:
                 handle.write("No external providers with status updates "
