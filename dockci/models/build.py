@@ -28,6 +28,7 @@ from dockci.models.build_meta.config import BuildConfig
 from dockci.models.build_meta.stages import BuildStage, BuildStageBase
 from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      GitInfoStage,
+                                                     TagVersionStage,
                                                      WorkdirStage,
                                                      )
 from dockci.models.job import Job
@@ -40,9 +41,6 @@ from dockci.util import (bytes_human_readable,
                          is_semantic,
                          stream_write_status,
                          )
-
-
-TAG_RE = re.compile('[a-z0-9_.]')
 
 
 class Build(Model):  # pylint:disable=too-many-instance-attributes
@@ -249,7 +247,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     lambda: self._stage(
                         runnable=GitChangesStage(self, workdir)
                     ).returncode == 0,
-                    lambda: self._run_tag_version(workdir),
+                    lambda: self._stage(
+                        runnable=TagVersionStage(self, workdir)
+                    ),  # RC is ignored
                     lambda: self._run_provision(workdir),
                     lambda: self._run_build(workdir),
                 ))
@@ -290,38 +290,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
             self.complete_ts = datetime.now()
             self.save()
-
-    def _run_tag_version(self, workdir):
-        """
-        Try and add a version to the build, based on git tag
-        """
-        stage = self._stage(
-            'git_tag', workdir=workdir,
-            cmd_args=['git', 'describe', '--tags', '--exact-match']
-        )
-        if not stage.returncode == 0:
-            # TODO remove spoofed return
-            # (except that --exact-match legitimately returns 128 if no tag)
-            return True  # stage result is irrelevant
-
-        try:
-            # TODO opening file to get this is kinda awful
-            with stage.data_file_path().open() as handle:
-                last_line = None
-                for line in handle:
-                    line = line.strip()
-                    if line and TAG_RE.match(line):
-                        last_line = line
-
-                if last_line:
-                    self.tag = last_line
-                    self.save()
-
-        except KeyError:
-            pass
-
-        # TODO don't spoof the return; just ignore output elsewhere
-        return True  # stage result is irrelevant
 
     def _run_provision(self, workdir):
         """

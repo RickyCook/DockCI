@@ -2,6 +2,7 @@
 Preparation for the main build stages
 """
 
+import re
 import subprocess
 
 from dockci.models.build_meta.config import BuildConfig
@@ -142,3 +143,41 @@ class GitChangesStage(CommandBuildStage):
             return super(GitChangesStage, self).runnable(handle)
 
         return True
+
+
+class TagVersionStage(CommandBuildStage):
+    """
+    Try and add a version to the build, based on git tag
+    """
+
+    slug = 'git_tag'
+    tag_re = re.compile('[a-z0-9_.]')
+
+    def __init__(self, build, workdir):
+        super(TagVersionStage, self).__init__(
+            build, workdir,
+            ['git', 'describe', '--tags', '--exact-match'],
+        )
+
+    def runnable(self, out_handle):
+        returncode = super(TagVersionStage, self).runnable(out_handle)
+        if returncode != 0:
+            return returncode
+
+        try:
+            # TODO opening file to get this is kinda awful
+            with self.data_file_path().open() as in_handle:
+                last_line = None
+                for line in in_handle:
+                    line = line.strip()
+                    if line and self.tag_re.match(line):
+                        last_line = line
+
+                if last_line:
+                    self.build.tag = last_line
+                    self.build.save()
+
+        except KeyError:
+            pass
+
+        return returncode
