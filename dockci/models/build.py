@@ -26,7 +26,10 @@ from yaml_model import (LoadOnAccess,
 from dockci.exceptions import AlreadyBuiltError, AlreadyRunError
 from dockci.models.build_meta.config import BuildConfig
 from dockci.models.build_meta.stages import BuildStage, BuildStageBase
-from dockci.models.build_meta.stages_prepare import WorkdirStage, GitInfoStage
+from dockci.models.build_meta.stages_prepare import (GitChangesStage,
+                                                     GitInfoStage,
+                                                     WorkdirStage,
+                                                     )
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
 from dockci.server import CONFIG
@@ -243,7 +246,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     lambda: self._stage(
                         runnable=GitInfoStage(self, workdir)
                     ).returncode == 0,
-                    lambda: self._run_git_changes(workdir),
+                    lambda: self._stage(
+                        runnable=GitChangesStage(self, workdir)
+                    ).returncode == 0,
                     lambda: self._run_tag_version(workdir),
                     lambda: self._run_provision(workdir),
                     lambda: self._run_build(workdir),
@@ -285,29 +290,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
             self.complete_ts = datetime.now()
             self.save()
-
-    def _run_git_changes(self, workdir):
-        """
-        Get a list of changes from git between now and the most recently built
-        ancestor
-        """
-        # TODO fix YAML model to return None rather than an empty model so that
-        #      if self.ancestor_build will work
-        if self.has_value('ancestor_build'):
-            revision_range_string = '%s..%s' % (
-                self.ancestor_build.commit,  # pylint:disable=no-member
-                self.commit,
-            )
-            self._stage(
-                'git_changes',
-                workdir=workdir,
-                cmd_args=['git',
-                          '-c', 'color.ui=always',
-                          'log', revision_range_string
-                          ]
-            )
-
-        return True  # Result is irrelevant
 
     def _run_tag_version(self, workdir):
         """

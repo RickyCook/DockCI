@@ -110,3 +110,35 @@ class GitInfoStage(BuildStageBase):
             self.build.save()
 
         return proc.returncode
+
+
+class GitChangesStage(CommandBuildStage):
+    """
+    Get a list of changes from git between now and the most recently built
+    ancestor
+    """
+
+    slug = 'git_changes'
+
+    def __init__(self, build, workdir):
+        cmd_args = []
+        if build.has_value('ancestor_build'):
+            revision_range_string = '%s..%s' % (
+                build.ancestor_build.commit,  # pylint:disable=no-member
+                build.commit,
+            )
+
+            cmd_args = [
+                'git',
+                '-c', 'color.ui=always',
+                'log', revision_range_string
+            ]
+        super(GitChangesStage, self).__init__(build, workdir, cmd_args)
+
+    def runnable(self, handle):
+        # TODO fix YAML model to return None rather than an empty model so that
+        #      if self.ancestor_build will work
+        if self.cmd_args:
+            return super(GitChangesStage, self).runnable(handle)
+
+        return True
