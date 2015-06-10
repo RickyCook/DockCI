@@ -18,7 +18,7 @@ from flask import (abort,
 from yaml_model import ValidationError
 
 from dockci.models.build import Build
-from dockci.models.job import Job
+from dockci.models.project import Project
 from dockci.server import APP
 from dockci.util import (login_or_github_required,
                          is_valid_github,
@@ -26,43 +26,43 @@ from dockci.util import (login_or_github_required,
                          )
 
 
-@APP.route('/jobs/<job_slug>/builds/<build_slug>', methods=('GET',))
-def build_view(job_slug, build_slug):
+@APP.route('/projects/<project_slug>/builds/<build_slug>', methods=('GET',))
+def build_view(project_slug, build_slug):
     """
     View to display a build
     """
-    job = Job(slug=job_slug)
-    build = Build(job=job, slug=build_slug)
+    project = Project(slug=project_slug)
+    build = Build(project=project, slug=build_slug)
     if not build.exists():
         abort(404)
 
     return render_template('build.html', build=build)
 
 
-@APP.route('/jobs/<job_slug>/builds/new', methods=('GET', 'POST'))
+@APP.route('/projects/<project_slug>/builds/new', methods=('GET', 'POST'))
 @login_or_github_required
-def build_new_view(job_slug):
+def build_new_view(project_slug):
     """
     View to create a new build
     """
-    job = Job(slug=job_slug)
-    if not job.exists():
+    project = Project(slug=project_slug)
+    if not project.exists():
         abort(404)
 
     if request.method == 'POST':
-        build = Build(job=job)
-        build.repo = job.repo
+        build = Build(project=project)
+        build.repo = project.repo
 
         build_url = url_for('build_view',
-                            job_slug=job_slug,
+                            project_slug=project_slug,
                             build_slug=build.slug)
 
         if 'X-Github-Event' in request.headers:
-            if not job.github_secret:
+            if not project.github_secret:
                 logging.warn("GitHub webhook secret not setup")
                 abort(403)
 
-            if not is_valid_github(job.github_secret):
+            if not is_valid_github(project.github_secret):
                 logging.warn("Invalid GitHub payload")
                 abort(403)
 
@@ -100,16 +100,16 @@ def build_new_view(job_slug):
             except ValidationError as ex:
                 flash(ex.messages, 'danger')
 
-    return render_template('build_new.html', build=Build(job=job))
+    return render_template('build_new.html', build=Build(project=project))
 
 
-@APP.route('/jobs/<job_slug>/builds/<build_slug>.json', methods=('GET',))
-def build_output_json(job_slug, build_slug):
+@APP.route('/projects/<project_slug>/builds/<build_slug>.json', methods=('GET',))
+def build_output_json(project_slug, build_slug):
     """
     View to download some build info in JSON
     """
-    job = Job(slug=job_slug)
-    build = Build(job=job, slug=build_slug)
+    project = Project(slug=project_slug)
+    build = Build(project=project, slug=build_slug)
     if not build.exists():
         abort(404)
 
@@ -119,14 +119,14 @@ def build_output_json(job_slug, build_slug):
                     mimetype='application/json')
 
 
-@APP.route('/jobs/<job_slug>/builds/<build_slug>/output/<filename>',
+@APP.route('/projects/<project_slug>/builds/<build_slug>/output/<filename>',
            methods=('GET',))
-def build_output_view(job_slug, build_slug, filename):
+def build_output_view(project_slug, build_slug, filename):
     """
     View to download some build output
     """
-    job = Job(slug=job_slug)
-    build = Build(job=job, slug=build_slug)
+    project = Project(slug=project_slug)
+    build = Build(project=project, slug=build_slug)
 
     # TODO possible security issue opending files from user input like this
     data_file_path = build.build_output_path().join(filename)

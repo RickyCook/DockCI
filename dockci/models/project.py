@@ -13,31 +13,31 @@ from dockci.server import OAUTH_APPS
 from dockci.util import is_yaml_file, is_git_ancestor
 
 
-def all_jobs():
+def all_projects():
     """
-    Get the list of jobs
+    Get the list of projects
     """
     try:
-        for path in Job.data_dir_path().listdir():
+        for path in Project.data_dir_path().listdir():
             if is_yaml_file(path):
-                job = Job(path.purebasename)
-                yield job
+                project = Project(path.purebasename)
+                yield project
 
     except py.error.ENOENT:
         return
 
 
-class Job(Model):  # pylint:disable=too-few-public-methods
+class Project(Model):  # pylint:disable=too-few-public-methods
     """
-    A job, representing a container to be built
+    A project, representing a container to be built
     """
     def __init__(self, slug=None):
-        super(Job, self).__init__()
+        super(Project, self).__init__()
         self.slug = slug
 
     def _all_builds(self, reverse_=True):
         """
-        Get all the builds associated with this job
+        Get all the builds associated with this project
         """
         from dockci.models.build import Build
 
@@ -49,7 +49,7 @@ class Job(Model):  # pylint:disable=too-few-public-methods
 
             for filename in all_files:
                 if is_yaml_file(filename):
-                    builds.append(Build(job=self,
+                    builds.append(Build(project=self,
                                         slug=filename.purebasename))
 
             return builds
@@ -103,7 +103,7 @@ class Job(Model):  # pylint:disable=too-few-public-methods
         return self.latest_build(passed, versioned, check_build)
 
     def validate(self):
-        with self.parent_validation(Job):
+        with self.parent_validation(Project):
             errors = []
 
             if not self.repo:
@@ -168,18 +168,18 @@ class Job(Model):  # pylint:disable=too-few-public-methods
 
     @property
     def url(self):
-        """ URL for this job """
-        return url_for('job_view', slug=self.slug)
+        """ URL for this project """
+        return url_for('project_view', slug=self.slug)
 
     @property
     def build_new_url(self):
-        """ URL for this job """
-        return url_for('build_new_view', job_slug=self.slug)
+        """ URL for this project """
+        return url_for('build_new_view', project_slug=self.slug)
 
     @property
     def build_new_url_ext(self):
-        """ URL for this job """
-        return url_for('build_new_view', job_slug=self.slug, _external=True)
+        """ URL for this project """
+        return url_for('build_new_view', project_slug=self.slug, _external=True)
 
     slug = None
     repo = LoadOnAccess(default=lambda _: '')

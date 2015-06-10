@@ -26,7 +26,7 @@ from yaml_model import (LoadOnAccess,
 
 from dockci.exceptions import AlreadyBuiltError
 from dockci.exceptions import AlreadyRunError
-from dockci.models.job import Job
+from dockci.models.project import Project
 # TODO fix and reenable pylint check for cyclic-import
 from dockci.server import CONFIG
 from dockci.util import (bytes_human_readable,
@@ -121,31 +121,31 @@ class BuildStage(object):
 
 class Build(Model):  # pylint:disable=too-many-instance-attributes
     """
-    An individual job build, and result
+    An individual project build, and result
     """
-    def __init__(self, job=None, slug=None):
+    def __init__(self, project=None, slug=None):
         super(Build, self).__init__()
 
-        assert job is not None, "Job is given"
+        assert project is not None, "Project is given"
 
-        self.job = job
-        self.job_slug = job.slug
+        self.project = project
+        self.project_slug = project.slug
 
         if slug:
             self.slug = slug
 
     slug = OnAccess(lambda _: hex(int(datetime.now().timestamp() * 10000))[2:])
-    job = OnAccess(lambda self: Job(self.job_slug))
-    job_slug = OnAccess(lambda self: self.job.slug)  # TODO infinite loop
+    project = OnAccess(lambda self: Project(self.project_slug))
+    project_slug = OnAccess(lambda self: self.project.slug)  # TODO infinite loop
     ancestor_build = ModelReference(lambda self: Build(
-        self.job,
+        self.project,
         self.ancestor_build_slug
     ), default=lambda _: None)
     create_ts = LoadOnAccess(generate=lambda _: datetime.now())
     start_ts = LoadOnAccess(default=lambda _: None)
     complete_ts = LoadOnAccess(default=lambda _: None)
     result = LoadOnAccess(default=lambda _: None)
-    repo = LoadOnAccess(generate=lambda self: self.job.repo)
+    repo = LoadOnAccess(generate=lambda self: self.project.repo)
     commit = LoadOnAccess(default=lambda _: None)
     tag = LoadOnAccess(default=lambda _: None)
     image_id = LoadOnAccess(default=lambda _: None)
@@ -176,8 +176,8 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         with self.parent_validation(Build):
             errors = []
 
-            if not self.job:
-                errors.append("Parent job not given")
+            if not self.project:
+                errors.append("Parent project not given")
             if self.image_id and not is_docker_id(self.image_id):
                 errors.append("Invalid Docker image ID")
             if self.container_id and not is_docker_id(self.container_id):
@@ -240,7 +240,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         return {
             name: {'size': bytes_human_readable(path.size()),
                    'link': url_for('build_output_view',
-                                   job_slug=self.job_slug,
+                                   project_slug=self.project_slug,
                                    build_slug=self.slug,
                                    filename='%s.tar' % name,
                                    ),
@@ -256,9 +256,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         """
         if CONFIG.docker_use_registry:
             return '{host}/{name}'.format(host=CONFIG.docker_registry_host,
-                                          name=self.job_slug)
+                                          name=self.project_slug)
 
-        return self.job_slug
+        return self.project_slug
 
     @property
     def docker_full_name(self):
@@ -280,10 +280,10 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         return self.result == 'success' and self.tag is not None
 
     def data_file_path(self):
-        # Add the job name before the build slug in the path
+        # Add the project name before the build slug in the path
         data_file_path = super(Build, self).data_file_path()
         return data_file_path.join(
-            '..', self.job.slug, data_file_path.basename
+            '..', self.project.slug, data_file_path.basename
         )
 
     def build_output_path(self):
@@ -301,7 +301,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         # TODO fix and reenable pylint check for cyclic-import
         from dockci.workers import run_build_async
-        run_build_async(self.job_slug, self.slug)
+        run_build_async(self.project_slug, self.slug)
 
     def _run_now(self):
         """
@@ -431,7 +431,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                         "%s is %s\n" % (display_name, value)
                     ).encode())
 
-            ancestor_build = self.job.latest_build_ancestor(workdir,
+            ancestor_build = self.project.latest_build_ancestor(workdir,
                                                             self.commit)
             if ancestor_build:
                 properties_empty = False
@@ -511,30 +511,30 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         """
         def runnable(handle):
             """
-            Resolve jobs and start services
+            Resolve projects and start services
             """
             all_okay = True
             # pylint:disable=no-member
-            for job_slug, service_config in self.build_config.services.items():
+            for project_slug, service_config in self.build_config.services.items():
                 faux_log = FauxDockerLog(handle)
 
-                defaults = {'status': "Finding service %s" % job_slug,
-                            'id': 'docker_provision_%s' % job_slug}
+                defaults = {'status': "Finding service %s" % project_slug,
+                            'id': 'docker_provision_%s' % project_slug}
                 with faux_log.more_defaults(**defaults):
                     faux_log.update()
 
-                    service_job = Job(job_slug)
-                    if not service_job.exists():
-                        faux_log.update(error="No job found")
+                    service_project = Project(project_slug)
+                    if not service_project.exists():
+                        faux_log.update(error="No project found")
                         all_okay = False
                         continue
 
-                    service_build = service_job.latest_build(passed=True,
+                    service_build = service_project.latest_build(passed=True,
                                                              versioned=True)
                     if not service_build:
                         faux_log.update(
                             error="No successful, versioned build for %s" % (
-                                service_job.name
+                                service_project.name
                             ),
                         )
                         all_okay = False
@@ -542,10 +542,10 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
                 defaults = {
                     'status': "Starting service %s %s" % (
-                        service_job.name,
+                        service_project.name,
                         service_build.tag,
                     ),
-                    'id': 'docker_provision_%s' % job_slug}
+                    'id': 'docker_provision_%s' % project_slug}
                 with faux_log.more_defaults(**defaults):
                     faux_log.update()
 
@@ -570,7 +570,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
                         # Store the provisioning info
                         self._provisioned_containers.append({
-                            'job_slug': job_slug,
+                            'project_slug': project_slug,
                             'config': service_config,
                             'id': container['Id']
                         })
@@ -611,7 +611,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         if self.tag is not None:
             existing_image = None
             for image in self.docker_client.images(
-                name=self.job_slug,
+                name=self.project_slug,
             ):
                 if tag in image['RepoTags']:
                     existing_image = image
@@ -623,7 +623,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     raise AlreadyBuiltError(
                         'Version %s of %s already built' % (
                             self.tag,
-                            self.job_slug,
+                            self.project_slug,
                         )
                     )
                 # Delete existing builds of _non-versioned_ tagged code
@@ -683,11 +683,11 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     if isinstance(service_info['config'], dict):
                         service_info['alias'] = service_info['config'].get(
                             'alias',
-                            service_info['job_slug']
+                            service_info['project_slug']
                         )
 
                     else:
-                        service_info['alias'] = service_info['job_slug']
+                        service_info['alias'] = service_info['project_slug']
 
                 return (service_info['name'], service_info['alias'])
 
