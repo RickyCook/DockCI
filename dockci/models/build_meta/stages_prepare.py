@@ -5,8 +5,13 @@ Preparation for the main build stages
 import re
 import subprocess
 
+import docker
+
+from dockci.models.job import Job
 from dockci.models.build_meta.config import BuildConfig
 from dockci.models.build_meta.stages import BuildStageBase, CommandBuildStage
+from dockci.server import CONFIG
+from dockci.util import docker_ensure_image, FauxDockerLog
 
 
 class WorkdirStage(CommandBuildStage):
@@ -181,3 +186,87 @@ class TagVersionStage(CommandBuildStage):
             pass
 
         return returncode
+
+
+class ProvisionStage(BuildStageBase):
+    """
+    Provision the services that are required for this build
+    """
+
+    slug = 'docker_provision'
+
+    def runnable(self, handle):
+        """
+        Resolve jobs and start services
+        """
+        all_okay = True
+        # pylint:disable=no-member
+        services = self.build.build_config.services
+        for job_slug, service_config in services.items():
+            faux_log = FauxDockerLog(handle)
+
+            defaults = {'status': "Finding service %s" % job_slug,
+                        'id': 'docker_provision_%s' % job_slug}
+            with faux_log.more_defaults(**defaults):
+                faux_log.update()
+
+                service_job = Job(job_slug)
+                if not service_job.exists():
+                    faux_log.update(error="No job found")
+                    all_okay = False
+                    continue
+
+                service_build = service_job.latest_build(passed=True,
+                                                         versioned=True)
+                if not service_build:
+                    faux_log.update(
+                        error="No successful, versioned build for %s" % (
+                            service_job.name
+                        ),
+                    )
+                    all_okay = False
+                    continue
+
+            defaults = {
+                'status': "Starting service %s %s" % (
+                    service_job.name,
+                    service_build.tag,
+                ),
+                'id': 'docker_provision_%s' % job_slug,
+            }
+            with faux_log.more_defaults(**defaults):
+                faux_log.update()
+
+                try:
+                    image_id = docker_ensure_image(
+                        self.build.docker_client,
+                        service_build.image_id,
+                        service_build.docker_image_name,
+                        service_build.tag,
+                        insecure_registry=CONFIG.docker_registry_insecure,
+                        handle=handle,
+                    )
+                    service_kwargs = {
+                        key: value for key, value in service_config.items()
+                        if key in ('command', 'environment')
+                    }
+                    container = self.build.docker_client.create_container(
+                        image=image_id,
+                        **service_kwargs
+                    )
+                    self.build.docker_client.start(container['Id'])
+
+                    # Store the provisioning info
+                    # pylint:disable=protected-access
+                    self.build._provisioned_containers.append({
+                        'job_slug': job_slug,
+                        'config': service_config,
+                        'id': container['Id']
+                    })
+                    faux_log.update(progress="Done")
+
+                except docker.errors.APIError as ex:
+                    faux_log.update(error=ex.explanation.decode())
+                    all_okay = False
+
+        return 0 if all_okay else 1
