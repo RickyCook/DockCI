@@ -156,7 +156,7 @@ class TagVersionStage(CommandBuildStage):
     """
 
     slug = 'git_tag'
-    tag_re = re.compile('[a-z0-9_.]')
+    tag_re = re.compile(r'[a-z0-9_.]')
 
     def __init__(self, build, workdir):
         super(TagVersionStage, self).__init__(
