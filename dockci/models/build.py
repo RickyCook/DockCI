@@ -24,15 +24,15 @@ from yaml_model import (LoadOnAccess,
 from dockci.exceptions import AlreadyRunError
 from dockci.models.build_meta.config import BuildConfig
 from dockci.models.build_meta.stages import BuildStage, BuildStageBase
+from dockci.models.build_meta.stages_main import (BuildDockerStage,
+                                                  TestStage,
+                                                  )
 from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      GitInfoStage,
                                                      ProvisionStage,
                                                      TagVersionStage,
                                                      WorkdirStage,
                                                      )
-from dockci.models.build_meta.stages_main import (BuildDockerStage,
-                                                  TestStage,
-                                                  )
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
 from dockci.server import CONFIG
