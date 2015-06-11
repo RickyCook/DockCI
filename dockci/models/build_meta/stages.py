@@ -149,6 +149,9 @@ class DockerStage(BuildStageBase):
         """
         output = self.runnable_docker()
 
+        if not output:
+            return 0
+
         line = ''
         for line in output:
             if isinstance(line, bytes):

@@ -27,6 +27,8 @@ from dockci.models.build_meta.stages import BuildStage, BuildStageBase
 from dockci.models.build_meta.stages_main import (BuildDockerStage,
                                                   TestStage,
                                                   )
+from dockci.models.build_meta.stages_post import (PushStage,
+                                                  )
 from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      GitInfoStage,
                                                      ProvisionStage,
@@ -266,7 +268,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
                 # We should fail the build here because if this is a tagged
                 # build, we can't rebuild it
-                if not self._run_push():
+                if not self._stage(runnable=PushStage(self)).returncode == 0:
                     self.result = 'error'
                     return False
 
@@ -293,28 +295,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
             self.complete_ts = datetime.now()
             self.save()
-
-    def _run_push(self):
-        """
-        Push the built container to the Docker registry, if versioned and
-        configured
-        """
-        def push_container():
-            """
-            Perform the actual Docker push operation
-            """
-            return self.docker_client.push(
-                self.docker_image_name,
-                tag=self.tag,
-                stream=True,
-                insecure_registry=CONFIG.docker_registry_insecure,
-            )
-
-        if self.tag and CONFIG.docker_use_registry:
-            return self._run_docker('push', push_container)
-
-        else:
-            return True
 
     def _run_docker(self,
                     docker_stage_slug,
