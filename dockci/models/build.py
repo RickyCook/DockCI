@@ -2,10 +2,8 @@
 DockCI - CI, but with that all important Docker twist
 """
 
-import json
 import logging
 import random
-import re
 import tempfile
 
 from datetime import datetime
@@ -23,7 +21,7 @@ from yaml_model import (LoadOnAccess,
                         ValidationError,
                         )
 
-from dockci.exceptions import AlreadyBuiltError, AlreadyRunError
+from dockci.exceptions import AlreadyRunError
 from dockci.models.build_meta.config import BuildConfig
 from dockci.models.build_meta.stages import BuildStage, BuildStageBase
 from dockci.models.build_meta.stages_prepare import (GitChangesStage,
@@ -32,12 +30,13 @@ from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      TagVersionStage,
                                                      WorkdirStage,
                                                      )
+from dockci.models.build_meta.stages_main import (BuildDockerStage,
+                                                  )
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
 from dockci.server import CONFIG
 from dockci.util import (bytes_human_readable,
                          is_docker_id,
-                         is_semantic,
                          stream_write_status,
                          )
 
@@ -252,7 +251,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     lambda: self._stage(
                         runnable=ProvisionStage(self)
                     ).returncode == 0,
-                    lambda: self._run_build(workdir),
+                    lambda: self._stage(
+                        runnable=BuildDockerStage(self, workdir)
+                    ).returncode == 0,
                 ))
                 if not all(pre_build):
                     self.result = 'error'
@@ -291,73 +292,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
             self.complete_ts = datetime.now()
             self.save()
-
-    def _run_build(self, workdir):
-        """
-        Tell the Docker host to build
-        """
-        def on_done(line):
-            """
-            Check the final line for success, and image id
-            """
-            if line:
-                if isinstance(line, bytes):
-                    line = line.decode()
-
-                line_data = json.loads(line)
-                re_match = re.search(r'Successfully built ([0-9a-f]+)',
-                                     line_data.get('stream', ''))
-                if re_match:
-                    self.image_id = re_match.group(1)
-                    return True
-
-            return False
-
-        tag = self.docker_full_name
-        if self.tag is not None:
-            existing_image = None
-            for image in self.docker_client.images(
-                name=self.job_slug,
-            ):
-                if tag in image['RepoTags']:
-                    existing_image = image
-                    break
-
-            if existing_image is not None:
-                # Do not override existing builds of _versioned_ tagged code
-                if is_semantic(self.tag):
-                    raise AlreadyBuiltError(
-                        'Version %s of %s already built' % (
-                            self.tag,
-                            self.job_slug,
-                        )
-                    )
-                # Delete existing builds of _non-versioned_ tagged code
-                # (allows replacement of images)
-                else:
-                    # TODO it would be nice to inform the user of this action
-                    try:
-                        self.docker_client.remove_image(
-                            image=existing_image['Id'],
-                        )
-                    except docker.errors.APIError:
-                        # TODO handle deletion of containers here
-                        pass
-
-        # Don't use the docker caches if a version tag is defined
-        no_cache = (self.tag is not None)
-
-        return self._run_docker(
-            'build',
-            # saved stream for debugging
-            # lambda: open('docker_build_stream', 'r'),
-            lambda: self.docker_client.build(path=workdir.strpath,
-                                             tag=tag,
-                                             nocache=no_cache,
-                                             rm=True,
-                                             stream=True),
-            on_done=on_done,
-        )
 
     def _run_test(self):
         """

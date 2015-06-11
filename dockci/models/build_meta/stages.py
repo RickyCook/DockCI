@@ -117,3 +117,54 @@ class CommandBuildStage(BuildStageBase):  # pylint:disable=abstract-method
 
         else:
             return run_one_cmd(self.cmd_args)
+
+
+class DockerStage(BuildStageBase):
+    """
+    Wrapper around common Docker command process. Will send output lines to
+    file, and optionally use callbacks to notify on each line, and
+    completion
+    """
+
+    def runnable_docker(self):
+        """ Commands to execute to get a Docker stream """
+        raise NotImplementedError(
+            "You must override the 'runnable_docker' method"
+        )
+
+    def on_line(self, line):
+        """ Method called for each line in the output """
+        pass
+
+    def on_done(self, line):
+        """
+        Method called when the Docker command is complete. Line given is the
+        last line that Docker gave
+        """
+        pass
+
+    def runnable(self, handle):
+        """
+        Perform the Docker command given
+        """
+        output = self.runnable_docker()
+
+        line = ''
+        for line in output:
+            if isinstance(line, bytes):
+                handle.write(line)
+            else:
+                handle.write(line.encode())
+
+            handle.flush()
+
+            self.on_line(line)
+
+        on_done_ret = self.on_done(line)
+        if on_done_ret is not None:
+            return on_done_ret
+
+        elif line:
+            return 0
+
+        return 1
