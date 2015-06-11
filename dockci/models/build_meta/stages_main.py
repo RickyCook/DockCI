@@ -87,3 +87,71 @@ class BuildDockerStage(DockerStage):
                 return 0
 
         return 1
+
+
+class TestStage(DockerStage):
+    """
+    Tell the Docker host to run the CI command
+    """
+
+    slug = 'docker_test'
+
+    def runnable_docker(self):
+        """
+        Create a container instance, attach to its outputs and then start it,
+        returning the output stream
+        """
+        container_details = self.build.docker_client.create_container(
+            self.build.image_id, 'ci'
+        )
+        self.build.container_id = container_details['Id']
+        self.build.save()
+
+        def link_tuple(service_info):
+            """
+            Turn our provisioned service info dict into an alias string for
+            Docker
+            """
+            if 'name' not in service_info:
+                service_info['name'] = \
+                    self.build.docker_client.inspect_container(
+                        service_info['id']
+                    )['Name'][1:]  # slice to remove the / from start
+
+            if 'alias' not in service_info:
+                if isinstance(service_info['config'], dict):
+                    service_info['alias'] = service_info['config'].get(
+                        'alias',
+                        service_info['job_slug']
+                    )
+
+                else:
+                    service_info['alias'] = service_info['job_slug']
+
+            return (service_info['name'], service_info['alias'])
+
+        stream = self.build.docker_client.attach(
+            self.build.container_id,
+            stream=True,
+        )
+        self.build.docker_client.start(
+            self.build.container_id,
+            links=[
+                link_tuple(service_info)
+                # pylint:disable=protected-access
+                for service_info in self.build._provisioned_containers
+            ]
+        )
+
+        return stream
+
+    def on_done(self, _):
+        """
+        Check container exit code and return True on 0, or False otherwise
+        """
+        details = self.build.docker_client.inspect_container(
+            self.build.container_id,
+        )
+        self.build.exit_code = details['State']['ExitCode']
+        self.build.save()
+        return details['State']['ExitCode']

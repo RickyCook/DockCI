@@ -31,6 +31,7 @@ from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      WorkdirStage,
                                                      )
 from dockci.models.build_meta.stages_main import (BuildDockerStage,
+                                                  TestStage,
                                                   )
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
@@ -259,7 +260,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     self.result = 'error'
                     return False
 
-                if not self._run_test():
+                if not self._stage(runnable=TestStage(self)).returncode == 0:
                     self.result = 'fail'
                     return False
 
@@ -292,70 +293,6 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
             self.complete_ts = datetime.now()
             self.save()
-
-    def _run_test(self):
-        """
-        Tell the Docker host to run the CI command
-        """
-        def start_container():
-            """
-            Create a container instance, attache to its outputs and then start
-            it, returning the output stream
-            """
-            container_details = self.docker_client.create_container(
-                self.image_id, 'ci'
-            )
-            self.container_id = container_details['Id']
-            self.save()
-
-            def link_tuple(service_info):
-                """
-                Turn our provisioned service info dict into an alias string for
-                Docker
-                """
-                if 'name' not in service_info:
-                    service_info['name'] = \
-                        self.docker_client.inspect_container(
-                            service_info['id']
-                        )['Name'][1:]  # slice to remove the / from start
-
-                if 'alias' not in service_info:
-                    if isinstance(service_info['config'], dict):
-                        service_info['alias'] = service_info['config'].get(
-                            'alias',
-                            service_info['job_slug']
-                        )
-
-                    else:
-                        service_info['alias'] = service_info['job_slug']
-
-                return (service_info['name'], service_info['alias'])
-
-            stream = self.docker_client.attach(self.container_id, stream=True)
-            self.docker_client.start(
-                self.container_id,
-                links=[
-                    link_tuple(service_info)
-                    for service_info in self._provisioned_containers
-                ]
-            )
-
-            return stream
-
-        def on_done(_):
-            """
-            Check container exit code and return True on 0, or False otherwise
-            """
-            details = self.docker_client.inspect_container(self.container_id)
-            self.exit_code = details['State']['ExitCode']
-            self.save()
-            return self.exit_code == 0
-
-        return self._run_docker(
-            'test',
-            start_container,
-            on_done=on_done,
-        )
 
     def _run_push(self):
         """
