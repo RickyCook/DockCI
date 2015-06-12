@@ -2,6 +2,7 @@
 Stages in a Build
 """
 
+import logging
 import subprocess
 
 from dockci.exceptions import AlreadyRunError
@@ -28,19 +29,39 @@ class BuildStageBase(object):
             '%s.log' % self.slug  # pylint:disable=no-member
         )
 
-    def run(self):
+    def run(self, expected_rc=0):
         """
         Start the child process, streaming it's output to the associated file,
-        and block until it returns
+        and block until it returns. Returns True if the return code matches
+        ``expected_rc``. If ``expected_rc`` is None, always return true
         """
+        # pylint:disable=no-member
+        logging.getLogger('dockci.build.stages').debug(
+            "Starting '%s' build stage for build '%s'",
+            self.slug, self.build.slug,
+        )
+
         if self.returncode is not None:
             raise AlreadyRunError(self)
+
+        self.build.build_stage_slugs.append(self.slug)
+        self.build.save()
 
         self.build.build_output_path().ensure_dir()
         with self.data_file_path().open('wb') as handle:
             self.returncode = self.runnable(handle)
 
-        return self.returncode == 0
+        if expected_rc is None:
+            return True
+
+        success = self.returncode == expected_rc
+        if not success:
+            logging.getLogger('dockci.build.stages').debug(
+                "Stage '%s' expected return of '%s'. Actually got '%s'",
+                self.slug, expected_rc, self.returncode,
+            )
+
+        return success
 
 
 class BuildStage(BuildStageBase):
