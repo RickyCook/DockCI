@@ -28,6 +28,8 @@ from dockci.models.build_meta.stages_main import (BuildDockerStage,
                                                   TestStage,
                                                   )
 from dockci.models.build_meta.stages_post import (PushStage,
+                                                  FetchStage,
+                                                  CleanupStage,
                                                   )
 from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      GitInfoStage,
@@ -40,7 +42,6 @@ from dockci.models.job import Job
 from dockci.server import CONFIG
 from dockci.util import (bytes_human_readable,
                          is_docker_id,
-                         stream_write_status,
                          )
 
 
@@ -277,7 +278,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
                 # Failing this doesn't indicade build failure
                 # TODO what kind of a failure would this not working be?
-                self._run_fetch_output()
+                self._stage(runnable=FetchStage(self))
 
             return True
         except Exception:  # pylint:disable=broad-except
@@ -288,137 +289,13 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         finally:
             try:
-                self._run_cleanup()
+                self._stage(runnable=CleanupStage(self))
 
             except Exception:  # pylint:disable=broad-except
                 self._error_stage('cleanup_error')
 
             self.complete_ts = datetime.now()
             self.save()
-
-    def _run_docker(self,
-                    docker_stage_slug,
-                    docker_command,
-                    on_line=None,
-                    on_done=None):
-        """
-        Wrapper around common Docker command process. Will send output lines to
-        file, and optionally use callbacks to notify on each line, and
-        completion
-        """
-        def runnable(handle):
-            """
-            Perform the Docker command given
-            """
-            output = docker_command()
-
-            line = ''
-            for line in output:
-                if isinstance(line, bytes):
-                    handle.write(line)
-                else:
-                    handle.write(line.encode())
-
-                handle.flush()
-
-                if on_line:
-                    on_line(line)
-
-            if on_done:
-                return on_done(line)
-
-            elif line:
-                return True
-
-            return False
-
-        return self._stage('docker_%s' % docker_stage_slug,
-                           runnable=runnable).returncode
-
-    def _run_fetch_output(self):
-        """
-        Fetches any output specified in build config
-        """
-
-        def runnable(handle):
-            """
-            Fetch/save the files
-            """
-            # pylint:disable=no-member
-            mappings = self.build_config.build_output.items()
-            for key, docker_fn in mappings:
-                handle.write(
-                    ("Fetching %s from '%s'..." % (key, docker_fn)).encode()
-                )
-                resp = self.docker_client.copy(self.container_id, docker_fn)
-
-                if 200 <= resp.status < 300:
-                    output_path = self.build_output_path().join('%s.tar' % key)
-                    with output_path.open('wb') as output_fh:
-                        # TODO stream so that not buffered in RAM
-                        bytes_written = output_fh.write(resp.data)
-
-                    handle.write(
-                        (" DONE! %s total\n" % (
-                            bytes_human_readable(bytes_written)
-                        )).encode(),
-                    )
-
-                else:
-                    handle.write(
-                        (" FAIL! HTTP status %d: %s\n" % (
-                            resp.status_code, resp.reason
-                        )).encode(),
-                    )
-
-            # Output something on no output
-            if not mappings:
-                handle.write("No output files to fetch".encode())
-
-        return self._stage('docker_fetch', runnable=runnable).returncode
-
-    def _run_cleanup(self):
-        """
-        Clean up after the build/test
-        """
-        def cleanup_context(handle, object_type, object_id):
-            """
-            Get a stream_write_status context manager with messages set
-            correctly
-            """
-            return stream_write_status(
-                handle,
-                "Cleaning up %s '%s'..." % (object_type, object_id),
-                "DONE!",
-                "FAILED!",
-            )
-
-        def runnable(handle):
-            """
-            Do the image/container cleanup
-            """
-            if self.container_id:
-                with cleanup_context(handle, 'container', self.container_id):
-                    self.docker_client.remove_container(self.container_id)
-
-            if self._provisioned_containers:
-                for service_info in self._provisioned_containers:
-                    ctx = cleanup_context(handle,
-                                          'provisioned container',
-                                          service_info['id'])
-                    with ctx:
-                        self.docker_client.remove_container(
-                            service_info['id'],
-                            force=True,
-                        )
-
-            # Only clean up image if this is an non-tagged build
-            if self.tag is None or self.result in ('error', 'fail'):
-                if self.image_id:
-                    with cleanup_context(handle, 'image', self.image_id):
-                        self.docker_client.remove_image(self.image_id)
-
-        return self._stage('cleanup', runnable)
 
     def _error_stage(self, stage_slug):
         """
