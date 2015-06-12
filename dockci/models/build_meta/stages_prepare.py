@@ -6,6 +6,7 @@ import re
 import subprocess
 
 import docker
+import docker.errors
 
 from dockci.models.job import Job
 from dockci.models.build_meta.config import BuildConfig

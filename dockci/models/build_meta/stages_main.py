@@ -6,6 +6,7 @@ import json
 import re
 
 import docker
+import docker.errors
 
 from dockci.exceptions import AlreadyBuiltError
 from dockci.models.build_meta.stages import DockerStage
