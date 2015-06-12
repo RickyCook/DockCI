@@ -241,35 +241,35 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                 workdir = py.path.local(workdir)
                 pre_build = (stage() for stage in (
                     lambda: self._stage(
-                        runnable=WorkdirStage(self, workdir)
+                        WorkdirStage(self, workdir)
                     ).returncode == 0,
                     lambda: self._stage(
-                        runnable=GitInfoStage(self, workdir)
+                        GitInfoStage(self, workdir)
                     ).returncode == 0,
                     lambda: self._stage(
-                        runnable=GitChangesStage(self, workdir)
+                        GitChangesStage(self, workdir)
                     ).returncode == 0,
                     lambda: self._stage(
-                        runnable=TagVersionStage(self, workdir)
+                        TagVersionStage(self, workdir)
                     ),  # RC is ignored
                     lambda: self._stage(
-                        runnable=ProvisionStage(self)
+                        ProvisionStage(self)
                     ).returncode == 0,
                     lambda: self._stage(
-                        runnable=BuildDockerStage(self, workdir)
+                        BuildDockerStage(self, workdir)
                     ).returncode == 0,
                 ))
                 if not all(pre_build):
                     self.result = 'error'
                     return False
 
-                if not self._stage(runnable=TestStage(self)).returncode == 0:
+                if not self._stage(TestStage(self)).returncode == 0:
                     self.result = 'fail'
                     return False
 
                 # We should fail the build here because if this is a tagged
                 # build, we can't rebuild it
-                if not self._stage(runnable=PushStage(self)).returncode == 0:
+                if not self._stage(PushStage(self)).returncode == 0:
                     self.result = 'error'
                     return False
 
@@ -278,7 +278,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
                 # Failing this doesn't indicade build failure
                 # TODO what kind of a failure would this not working be?
-                self._stage(runnable=FetchStage(self))
+                self._stage(FetchStage(self))
 
             return True
         except Exception:  # pylint:disable=broad-except
@@ -289,7 +289,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         finally:
             try:
-                self._stage(runnable=CleanupStage(self))
+                self._stage(CleanupStage(self))
 
             except Exception:  # pylint:disable=broad-except
                 self._error_stage('cleanup_error')
@@ -316,31 +316,17 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         except Exception:  # pylint:disable=broad-except
             print(traceback.format_exc())
 
-    def _stage(self,
-               stage_slug=None,
-               runnable=None,
-               workdir=None,
-               cmd_args=None):
+    def _stage(self, stage):
         """
         Create and save a new build stage, running the given args and saving
         its output
         """
-        if cmd_args:
-            stage = BuildStage.from_command(build=self,
-                                            slug=stage_slug,
-                                            cwd=workdir,
-                                            cmd_args=cmd_args)
-        elif isinstance(runnable, BuildStageBase):
-            stage = runnable
-            stage_slug = runnable.slug
-        else:
-            stage = BuildStage(build=self, slug=stage_slug, runnable=runnable)
 
         logging.getLogger('dockci.build.stages').debug(
-            "Starting '%s' build stage for build '%s'", stage_slug, self.slug
+            "Starting '%s' build stage for build '%s'", stage.slug, self.slug
         )
 
-        self.build_stage_slugs.append(stage_slug)  # pylint:disable=no-member
+        self.build_stage_slugs.append(stage.slug)  # pylint:disable=no-member
         self.save()
 
         stage.run()
