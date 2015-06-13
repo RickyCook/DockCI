@@ -7,8 +7,14 @@ from uuid import uuid4
 import py.error  # pylint:disable=import-error
 
 from flask import url_for
-from yaml_model import LoadOnAccess, Model, OnAccess, ValidationError
+from yaml_model import (LoadOnAccess,
+                        Model,
+                        ModelReference,
+                        OnAccess,
+                        ValidationError,
+                        )
 
+from dockci.models.auth import User
 from dockci.server import OAUTH_APPS
 from dockci.util import is_yaml_file, is_git_ancestor
 
@@ -191,5 +197,8 @@ class Job(Model):  # pylint:disable=too-few-public-methods
     github_repo_id = LoadOnAccess(default=lambda _: None)
     github_hook_id = LoadOnAccess(default=lambda _: None)
     github_secret = LoadOnAccess(default=lambda _: None)
+    github_auth_user = ModelReference(lambda self: User(
+        self.github_auth_user_slug
+    ), default=lambda _: None)
 
     builds = OnAccess(_all_builds)

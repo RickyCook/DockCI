@@ -9,8 +9,60 @@ import docker
 import docker.errors
 
 from dockci.exceptions import AlreadyBuiltError
-from dockci.models.build_meta.stages import DockerStage
+from dockci.models.build_meta.stages import BuildStageBase, DockerStage
 from dockci.util import is_semantic
+
+
+class ExternalStatusStage(BuildStageBase):
+    """ Send the build status to external providers """
+
+    def __init__(self, build, suffix):
+        super(ExternalStatusStage, self).__init__(build)
+        self.slug = 'external_status_%s' % suffix
+
+    # TODO state, state_msg, context config via OO means
+    def _send_github_status_stage(self,
+                                  handle,
+                                  state=None,
+                                  state_msg=None,
+                                  context='push'):
+        """
+        Update the GitHub status for the job, handling feedback by writing to a
+        log handle. Expected to be run from inside a stage in order to write to
+        the build log
+        """
+
+        handle.write("Submitting status to GitHub... ".encode())
+        handle.flush()
+        response = self.build.send_github_status(state, state_msg, context)
+
+        if response.status == 201:
+            handle.write("DONE!\n".encode())
+            handle.flush()
+            return True
+
+        else:
+            handle.write("FAILED!\n".encode())
+            handle.write(("%s\n" % response.data.get(
+                'message',
+                "Unexpected response from GitHub. HTTP status %d" % (
+                    response.status,
+                )
+            )).encode())
+            handle.flush()
+            return False
+
+    def runnable(self, handle):
+        success = None
+        if self.build.job.github_repo_id:
+            success = self._send_github_status_stage(handle)
+
+        if success is None:
+            handle.write("No external providers with status updates "
+                         "configured\n".encode())
+
+        handle.flush()
+        return 0 if success else 1
 
 
 class BuildDockerStage(DockerStage):

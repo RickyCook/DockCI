@@ -23,6 +23,7 @@ from dockci.exceptions import AlreadyRunError
 from dockci.models.build_meta.config import BuildConfig
 from dockci.models.build_meta.stages import BuildStage
 from dockci.models.build_meta.stages_main import (BuildDockerStage,
+                                                  ExternalStatusStage,
                                                   TestStage,
                                                   )
 from dockci.models.build_meta.stages_post import (PushStage,
@@ -37,7 +38,7 @@ from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      )
 from dockci.models.job import Job
 # TODO fix and reenable pylint check for cyclic-import
-from dockci.server import CONFIG
+from dockci.server import CONFIG, OAUTH_APPS
 from dockci.util import bytes_human_readable, is_docker_id
 
 
@@ -109,6 +110,29 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                 raise ValidationError(errors)
 
         return True
+
+    @property
+    def url(self):
+        """ URL for this build """
+        return url_for('build_view',
+                       job_slug=self.job.slug,
+                       build_slug=self.slug)
+
+    @property
+    def url_ext(self):
+        """ URL for this job """
+        return url_for('build_view',
+                       job_slug=self.job.slug,
+                       build_slug=self.slug,
+                       _external=True)
+
+    @property
+    def github_api_status_endpoint(self):
+        """ Status endpoint for GitHub API """
+        return '%s/commits/%s/statuses' % (
+            self.job.github_api_repo_endpoint,
+            self.commit,
+        )
 
     @property
     def state(self):
@@ -235,15 +259,26 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         try:
             with tempfile.TemporaryDirectory() as workdir:
                 workdir = py.path.local(workdir)
-                pre_build = (stage() for stage in (
+
+                git_info = (stage() for stage in (
                     lambda: WorkdirStage(self, workdir).run(0),
                     lambda: GitInfoStage(self, workdir).run(0),
+                ))
+
+                prepare = (stage() for stage in (
                     lambda: GitChangesStage(self, workdir).run(0),
                     lambda: TagVersionStage(self, workdir).run(None),
                     lambda: ProvisionStage(self).run(0),
                     lambda: BuildDockerStage(self, workdir).run(0),
                 ))
-                if not all(pre_build):
+                if not all(git_info):
+                    self.result = 'error'
+                    return False
+
+                if self.job.github_repo_id:
+                    ExternalStatusStage(self, 'start').run(0)
+
+                if not all(prepare):
                     self.result = 'error'
                     return False
 
@@ -273,13 +308,58 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         finally:
             try:
+                ExternalStatusStage(self, 'complete').run(0)
                 CleanupStage(self).run(None)
 
             except Exception:  # pylint:disable=broad-except
-                self._error_stage('cleanup_error')
+                self._error_stage('post_error')
 
             self.complete_ts = datetime.now()
             self.save()
+
+    def send_github_status(self, state=None, state_msg=None, context='push'):
+        """
+        Send a state to the GitHub commit represented by this build. If state
+        not set, is defaulted to something that makes sense, given the data in
+        this model
+        """
+
+        if state is None:
+            if self.state == 'running':
+                state = 'pending'
+            elif self.state == 'success':
+                state = 'success'
+            elif self.state == 'fail':
+                state = 'failure'
+            elif self.state == 'error':
+                state = 'error'
+            else:
+                state = 'error'
+                state_msg = "is in an unknown state: '%s'" % state
+
+        if state_msg is None:
+            if state == 'pending':
+                state_msg = "is in progress"
+            elif state == 'success':
+                state_msg = "completed successfully"
+            elif state == 'fail':
+                state_msg = "completed with failing tests"
+            elif state == 'error':
+                state_msg = "failed to complete due to an error"
+
+        if state_msg is not None:
+            extra_dict = dict(description="The DockCI build %s" % state_msg)
+
+        token_data = self.job.github_auth_user.oauth_tokens['github']
+        return OAUTH_APPS['github'].post(
+            self.github_api_status_endpoint,
+            dict(state=state,
+                 target_url=self.url_ext,
+                 context='continuous-integration/dockci/%s' % context,
+                 **extra_dict),
+            format='json',
+            token=(token_data['key'], token_data['secret']),
+        )
 
     def _error_stage(self, stage_slug):
         """

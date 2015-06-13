@@ -11,6 +11,7 @@
 - OAuth reauthenticate when scope changes #149
 - Remove DEBIAN_MIRROR override #150
 - Server host tests on config page #151
+- GitHub recieves build status updates #161
 
 ## v0.0.3
 - Log level to debug #20
