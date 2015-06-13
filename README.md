@@ -23,7 +23,7 @@ does is pull together some ideas and technologies to help us out.
 Sounds great, right? And it will be! But it's not ready yet! Soooooo read on ;D
 
 ## Requirements
- - Docker 1.15
+ - Docker 1.6.0 (others may work)
  - Python 3.4 (may work with 3.x, but untested)
 
 ## System setup - Debian Jessie
