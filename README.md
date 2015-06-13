@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/RickyCook/DockCI.svg)](https://travis-ci.org/RickyCook/DockCI)[![Requirements Status](https://requires.io/github/RickyCook/DockCI/requirements.svg?branch=master)](https://requires.io/github/RickyCook/DockCI/requirements/?branch=master)
+[![Build Status](https://travis-ci.org/RickyCook/DockCI.svg)](https://travis-ci.org/RickyCook/DockCI)[![Requirements Status](https://requires.io/github/RickyCook/DockCI/requirements.svg?branch=master)](https://requires.io/github/RickyCook/DockCI/requirements/?branch=master)[![Tickets in Release](https://badge.waffle.io/rickycook/dockci.svg?label=ready&title=Ready)](http://waffle.io/rickycook/dockci) 
 
 # DockCI
 DockCI is still alpha! It's certainly not feature complete.  It's heading towards MVP.
