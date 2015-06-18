@@ -61,12 +61,10 @@ def project_edit_view(slug):
     if not project.exists():
         abort(404)
 
-    return project_input_view(project, 'edit', (
-        # NOTE github_repo_id included so that it can be UNSET, but will never
-        # have its value passed through
-        'name', 'repo', 'github_secret', 'github_repo_id',
+    return project_input_view(project, 'edit', [
+        'name', 'repo', 'github_secret',
         'hipchat_api_token', 'hipchat_room',
-    ))
+    ])
 
 
 @APP.route('/projects/new', methods=('GET', 'POST'))
@@ -76,10 +74,10 @@ def project_new_view():
     View to make a new project
     """
     project = Project()
-    return project_input_view(project, 'new', (
+    return project_input_view(project, 'new', [
         'slug', 'name', 'repo', 'github_secret', 'github_repo_id',
         'hipchat_api_token', 'hipchat_room',
-    ))
+    ])
 
 
 def handle_github_hook(project):
@@ -107,8 +105,12 @@ def project_input_view(project, edit_operation, fields):
 
         # Filter out github properties if not a github repo, so that they are
         # unset on the project
-        if request.args.get('repo_type', None) != 'github':
+        if request.args.get('repo_type', None) == 'github':
+            fill_data['github_auth_user'] = current_user
+            fields.append('github_auth_user')
+        else:
             fill_data['github_repo_id'] = None
+            fields.append('github_repo_id')
 
         saved = request_fill(
             project, fields,

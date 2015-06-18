@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/RickyCook/DockCI.svg)](https://travis-ci.org/RickyCook/DockCI)[![Requirements Status](https://requires.io/github/RickyCook/DockCI/requirements.svg?branch=master)](https://requires.io/github/RickyCook/DockCI/requirements/?branch=master)
+[![Build Status](https://travis-ci.org/RickyCook/DockCI.svg?style=flat-square)](https://travis-ci.org/RickyCook/DockCI)[![Requirements Status](https://requires.io/github/RickyCook/DockCI/requirements.svg?branch=master&style=flat-square)](https://requires.io/github/RickyCook/DockCI/requirements/?branch=master)[![Tickets in Release](https://badge.waffle.io/rickycook/dockci.svg?label=ready&title=This Release)](http://waffle.io/rickycook/dockci) 
 
 # DockCI
 DockCI is still alpha! It's certainly not feature complete.  It's heading towards MVP.
@@ -23,7 +23,7 @@ does is pull together some ideas and technologies to help us out.
 Sounds great, right? And it will be! But it's not ready yet! Soooooo read on ;D
 
 ## Requirements
- - Docker 1.15
+ - Docker 1.6.0 (others may work)
  - Python 3.4 (may work with 3.x, but untested)
 
 ## System setup - Debian Jessie
