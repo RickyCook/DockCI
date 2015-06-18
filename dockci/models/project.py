@@ -185,7 +185,9 @@ class Project(Model):  # pylint:disable=too-few-public-methods
     @property
     def build_new_url_ext(self):
         """ URL for this project """
-        return url_for('build_new_view', project_slug=self.slug, _external=True)
+        return url_for('build_new_view',
+                       project_slug=self.slug,
+                       _external=True)
 
     slug = None
     repo = LoadOnAccess(default=lambda _: '')

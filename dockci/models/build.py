@@ -58,7 +58,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
     slug = OnAccess(lambda _: hex(int(datetime.now().timestamp() * 10000))[2:])
     project = OnAccess(lambda self: Project(self.project_slug))
-    project_slug = OnAccess(lambda self: self.project.slug)  # TODO infinite loop
+    project_slug = OnAccess(lambda self: self.project.slug)  # TODO inf. loop
     ancestor_build = ModelReference(lambda self: Build(
         self.project,
         self.ancestor_build_slug

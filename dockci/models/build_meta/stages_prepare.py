@@ -218,7 +218,7 @@ class ProvisionStage(BuildStageBase):
                     continue
 
                 service_build = service_project.latest_build(passed=True,
-                                                         versioned=True)
+                                                             versioned=True)
                 if not service_build:
                     faux_log.update(
                         error="No successful, versioned build for %s" % (

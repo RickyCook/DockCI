@@ -103,7 +103,8 @@ def build_new_view(project_slug):
     return render_template('build_new.html', build=Build(project=project))
 
 
-@APP.route('/projects/<project_slug>/builds/<build_slug>.json', methods=('GET',))
+@APP.route('/projects/<project_slug>/builds/<build_slug>.json',
+           methods=('GET',))
 def build_output_json(project_slug, build_slug):
     """
     View to download some build info in JSON

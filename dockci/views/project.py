@@ -22,7 +22,7 @@ def project_view(slug):
         abort(404)
 
     request_fill(project, ('name', 'repo', 'github_secret',
-                       'hipchat_api_token', 'hipchat_room'))
+                           'hipchat_api_token', 'hipchat_room'))
 
     page_size = int(request.args.get('page_size', 20))
     page_offset = int(request.args.get('page_offset', 0))
@@ -122,7 +122,9 @@ def project_input_view(project, edit_operation, fields):
             saved = handle_github_hook(project)
 
         if saved:
-            return redirect('/projects/{project_slug}'.format(project_slug=project.slug))
+            return redirect(
+                '/projects/{project_slug}'.format(project_slug=project.slug)
+            )
 
     if 'repo_type' in request.args:
         default_repo_type = request.args['repo_type']

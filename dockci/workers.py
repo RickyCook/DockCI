@@ -28,8 +28,8 @@ def send_mail(message):
 
 def run_build_async(project_slug, build_slug):
     """
-    Load and run a build's private run project, forking to handle the build in the
-    background
+    Load and run a build's private run project, forking to handle the build in
+    the background
     """
     if os.fork():
         return  # parent process
@@ -56,12 +56,15 @@ def run_build_async(project_slug, build_slug):
                     ))
 
                 if recipients:
-                    email = Message(
-                        recipients=recipients,
-                        subject="DockCI - {project_name} {build_result}ed".format(
+                    subject = (
+                        "DockCI - {project_name} {build_result}ed".format(
                             project_name=project.name,
                             build_result=build.result,
-                        ),
+                        )
+                    )
+                    email = Message(
+                        recipients=recipients,
+                        subject=subject,
                     )
                     send_mail(email)
 
