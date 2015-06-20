@@ -12,14 +12,14 @@ class InvalidOperationError(Exception):
 
 class AlreadyBuiltError(Exception):
     """
-    Raised when a versioned build already exists in the repository
+    Raised when a versioned job already exists in the repository
     """
     pass
 
 
 class AlreadyRunError(InvalidOperationError):
     """
-    Raised when a build or stage is attempted to be run that has already been
+    Raised when a job or stage is attempted to be run that has already been
     started/completed
     """
     runnable = None

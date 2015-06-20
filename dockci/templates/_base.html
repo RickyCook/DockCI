@@ -4,7 +4,7 @@
     <i class="mdi-{{ img }}"></i>
   </a>
 {%- endmacro %}
-{% macro build_state_glyph(state) -%}
+{% macro job_state_glyph(state) -%}
   <i class="{%- if state == 'success' -%}mdi-action-thumb-up mdi-success
             {%- elif state == 'fail' -%}mdi-action-thumb-down mdi-warning
             {%- elif state == 'error' -%}mdi-alert-warning mdi-danger

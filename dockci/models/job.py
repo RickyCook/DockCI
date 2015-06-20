@@ -20,33 +20,33 @@ from yaml_model import (LoadOnAccess,
                         )
 
 from dockci.exceptions import AlreadyRunError
-from dockci.models.build_meta.config import BuildConfig
-from dockci.models.build_meta.stages import BuildStage
-from dockci.models.build_meta.stages_main import (BuildDockerStage,
-                                                  ExternalStatusStage,
-                                                  TestStage,
-                                                  )
-from dockci.models.build_meta.stages_post import (PushStage,
-                                                  FetchStage,
-                                                  CleanupStage,
-                                                  )
-from dockci.models.build_meta.stages_prepare import (GitChangesStage,
-                                                     GitInfoStage,
-                                                     ProvisionStage,
-                                                     TagVersionStage,
-                                                     WorkdirStage,
-                                                     )
+from dockci.models.job_meta.config import JobConfig
+from dockci.models.job_meta.stages import JobStage
+from dockci.models.job_meta.stages_main import (BuildStage,
+                                                ExternalStatusStage,
+                                                TestStage,
+                                                )
+from dockci.models.job_meta.stages_post import (PushStage,
+                                                FetchStage,
+                                                CleanupStage,
+                                                )
+from dockci.models.job_meta.stages_prepare import (GitChangesStage,
+                                                   GitInfoStage,
+                                                   ProvisionStage,
+                                                   TagVersionStage,
+                                                   WorkdirStage,
+                                                   )
 from dockci.models.project import Project
 from dockci.server import CONFIG, OAUTH_APPS
 from dockci.util import bytes_human_readable, is_docker_id
 
 
-class Build(Model):  # pylint:disable=too-many-instance-attributes
+class Job(Model):  # pylint:disable=too-many-instance-attributes
     """
-    An individual project build, and result
+    An individual project job, and result
     """
     def __init__(self, project=None, slug=None):
-        super(Build, self).__init__()
+        super(Job, self).__init__()
 
         assert project is not None, "Project is given"
 
@@ -59,9 +59,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     slug = OnAccess(lambda _: hex(int(datetime.now().timestamp() * 10000))[2:])
     project = OnAccess(lambda self: Project(self.project_slug))
     project_slug = OnAccess(lambda self: self.project.slug)  # TODO inf. loop
-    ancestor_build = ModelReference(lambda self: Build(
+    ancestor_job = ModelReference(lambda self: Job(
         self.project,
-        self.ancestor_build_slug
+        self.ancestor_job_slug
     ), default=lambda _: None)
     create_ts = LoadOnAccess(generate=lambda _: datetime.now())
     start_ts = LoadOnAccess(default=lambda _: None)
@@ -76,11 +76,11 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     docker_client_host = LoadOnAccess(
         generate=lambda self: self.docker_client.base_url,
     )
-    build_stage_slugs = LoadOnAccess(generate=lambda _: [])
-    build_stages = OnAccess(lambda self: [
-        BuildStage(build=self, slug=slug)
+    job_stage_slugs = LoadOnAccess(generate=lambda _: [])
+    job_stages = OnAccess(lambda self: [
+        JobStage(job=self, slug=slug)
         for slug
-        in self.build_stage_slugs
+        in self.job_stage_slugs
     ])
     git_author_name = LoadOnAccess(default=lambda _: None)
     git_author_email = LoadOnAccess(default=lambda _: None)
@@ -90,12 +90,12 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                                        self.git_author_email)
     git_changes = LoadOnAccess(default=lambda _: None)
     # pylint:disable=unnecessary-lambda
-    build_config = OnAccess(lambda self: BuildConfig(self))
+    job_config = OnAccess(lambda self: JobConfig(self))
 
     _provisioned_containers = []
 
     def validate(self):
-        with self.parent_validation(Build):
+        with self.parent_validation(Job):
             errors = []
 
             if not self.project:
@@ -112,17 +112,17 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
     @property
     def url(self):
-        """ URL for this build """
-        return url_for('build_view',
+        """ URL for this job """
+        return url_for('job_view',
                        project_slug=self.project.slug,
-                       build_slug=self.slug)
+                       job_slug=self.slug)
 
     @property
     def url_ext(self):
         """ URL for this project """
-        return url_for('build_view',
+        return url_for('job_view',
                        project_slug=self.project.slug,
-                       build_slug=self.slug,
+                       job_slug=self.slug,
                        _external=True)
 
     @property
@@ -136,11 +136,11 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     @property
     def state(self):
         """
-        Current state that the build is in
+        Current state that the job is in
         """
         if self.result is not None:
             return self.result
-        elif self.build_stages:
+        elif self.job_stages:
             return 'running'  # TODO check if running or dead
         else:
             return 'queued'  # TODO check if queued or queue fail
@@ -150,7 +150,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     @property
     def docker_client(self):
         """
-        Get the cached (or new) Docker Client object being used for this build
+        Get the cached (or new) Docker Client object being used for this job
 
         CACHED VALUES NOT AVAILABLE OUTSIDE FORK
         """
@@ -173,20 +173,20 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         return self._docker_client
 
     @property
-    def build_output_details(self):
+    def job_output_details(self):
         """
-        Details for build output artifacts
+        Details for job output artifacts
         """
         # pylint:disable=no-member
         output_files = (
-            (name, self.build_output_path().join('%s.tar' % name))
-            for name in self.build_config.build_output.keys()
+            (name, self.job_output_path().join('%s.tar' % name))
+            for name in self.job_config.job_output.keys()
         )
         return {
             name: {'size': bytes_human_readable(path.size()),
-                   'link': url_for('build_output_view',
+                   'link': url_for('job_output_view',
                                    project_slug=self.project_slug,
-                                   build_slug=self.slug,
+                                   job_slug=self.slug,
                                    filename='%s.tar' % name,
                                    ),
                    }
@@ -220,37 +220,37 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     @property
     def is_stable_release(self):
         """
-        Check if this is a successfully run, tagged build
+        Check if this is a successfully run, tagged job
         """
         return self.result == 'success' and self.tag is not None
 
     def data_file_path(self):
-        # Add the project name before the build slug in the path
-        data_file_path = super(Build, self).data_file_path()
+        # Add the project name before the job slug in the path
+        data_file_path = super(Job, self).data_file_path()
         return data_file_path.join(
             '..', self.project.slug, data_file_path.basename
         )
 
-    def build_output_path(self):
+    def job_output_path(self):
         """
-        Directory for any build output data
+        Directory for any job output data
         """
         return self.data_file_path().join('..', '%s_output' % self.slug)
 
     def queue(self):
         """
-        Add the build to the queue
+        Add the job to the queue
         """
         if self.start_ts:
             raise AlreadyRunError(self)
 
         # TODO fix and reenable pylint check for cyclic-import
-        from dockci.workers import run_build_async
-        run_build_async(self.project_slug, self.slug)
+        from dockci.workers import run_job_async
+        run_job_async(self.project_slug, self.slug)
 
     def _run_now(self):
         """
-        Worker func that performs the build
+        Worker func that performs the job
         """
         self.start_ts = datetime.now()
         self.save()
@@ -268,7 +268,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     lambda: GitChangesStage(self, workdir).run(0),
                     lambda: TagVersionStage(self, workdir).run(None),
                     lambda: ProvisionStage(self).run(0),
-                    lambda: BuildDockerStage(self, workdir).run(0),
+                    lambda: BuildStage(self, workdir).run(0),
                 ))
                 if not all(git_info):
                     self.result = 'error'
@@ -285,8 +285,8 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     self.result = 'fail'
                     return False
 
-                # We should fail the build here because if this is a tagged
-                # build, we can't rebuild it
+                # We should fail the job here because if this is a tagged
+                # job, we can't rebuild it
                 if not PushStage(self).run(0):
                     self.result = 'error'
                     return False
@@ -294,7 +294,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                 self.result = 'success'
                 self.save()
 
-                # Failing this doesn't indicade build failure
+                # Failing this doesn't indicate job failure
                 # TODO what kind of a failure would this not working be?
                 FetchStage(self).run(None)
 
@@ -318,7 +318,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
     def send_github_status(self, state=None, state_msg=None, context='push'):
         """
-        Send a state to the GitHub commit represented by this build. If state
+        Send a state to the GitHub commit represented by this job. If state
         not set, is defaulted to something that makes sense, given the data in
         this model
         """
@@ -347,7 +347,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                 state_msg = "failed to complete due to an error"
 
         if state_msg is not None:
-            extra_dict = dict(description="The DockCI build %s" % state_msg)
+            extra_dict = dict(description="The DockCI job %s" % state_msg)
 
         token_data = self.project.github_auth_user.oauth_tokens['github']
         return OAUTH_APPS['github'].post(
@@ -364,12 +364,12 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         """
         Create an error stage and add stack trace for it
         """
-        self.build_stage_slugs.append(stage_slug)  # pylint:disable=no-member
+        self.job_stage_slugs.append(stage_slug)  # pylint:disable=no-member
         self.save()
 
         import traceback
         try:
-            BuildStage(
+            JobStage(
                 self,
                 stage_slug,
                 lambda handle: handle.write(

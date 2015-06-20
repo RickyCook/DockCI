@@ -5,7 +5,7 @@
   {% if current_user.is_authenticated() %}
     <span class="btn-group pull-right">
       {{ header_button('editor-mode-edit', '/projects/%s/edit' % project.slug) }}
-      {{ header_button('av-play-circle-outline', '/projects/%s/builds/new' % project.slug) }}
+      {{ header_button('av-play-circle-outline', '/projects/%s/jobs/new' % project.slug) }}
     </span>
   {% endif %}
 {% endblock %}
@@ -13,15 +13,15 @@
 <div class="checkbox"><label>
   <input id="filterStable" type="checkbox" {{ 'checked' if versioned else '' }}>Only stable releases
 </label></div>
-<table id="builds-list" class="table table-striped">
+<table id="jobs-list" class="table table-striped">
   <tr><th>Created</th><th>Tag</th><th>Commit ref</th><th>Author</th><th>State</th></tr>
-  {% for build in builds -%}
-    <tr class="build-detail">
-      <td><a href="/projects/{{ project.slug }}/builds/{{ build.slug }}">{{ build.create_ts }}</a></td>
-      <td>{{ build.tag if build.tag else '' }}</td>
-      <td>{{ build.commit }}</td>
-      <td>{{ git_user(build.git_author_name, build.git_author_email) if build.git_author_name or build.git_author_email else ''}}</td>
-      <td>{{ build_state_glyph(build.state) }}</td>
+  {% for job in jobs -%}
+    <tr class="job-detail">
+      <td><a href="/projects/{{ project.slug }}/jobs/{{ job.slug }}">{{ job.create_ts }}</a></td>
+      <td>{{ job.tag if job.tag else '' }}</td>
+      <td>{{ job.commit }}</td>
+      <td>{{ git_user(job.git_author_name, job.git_author_email) if job.git_author_name or job.git_author_email else ''}}</td>
+      <td>{{ job_state_glyph(job.state) }}</td>
     </tr>
   {%- endfor %}
 </table>

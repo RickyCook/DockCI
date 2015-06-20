@@ -1,5 +1,5 @@
 """
-Views related to build management
+Views related to job management
 """
 
 import json
@@ -17,7 +17,7 @@ from flask import (abort,
                    )
 from yaml_model import ValidationError
 
-from dockci.models.build import Build
+from dockci.models.job import Job
 from dockci.models.project import Project
 from dockci.server import APP
 from dockci.util import (login_or_github_required,
@@ -26,36 +26,36 @@ from dockci.util import (login_or_github_required,
                          )
 
 
-@APP.route('/projects/<project_slug>/builds/<build_slug>', methods=('GET',))
-def build_view(project_slug, build_slug):
+@APP.route('/projects/<project_slug>/jobs/<job_slug>', methods=('GET',))
+def job_view(project_slug, job_slug):
     """
-    View to display a build
+    View to display a job
     """
     project = Project(slug=project_slug)
-    build = Build(project=project, slug=build_slug)
-    if not build.exists():
+    job = Job(project=project, slug=job_slug)
+    if not job.exists():
         abort(404)
 
-    return render_template('build.html', build=build)
+    return render_template('job.html', job=job)
 
 
-@APP.route('/projects/<project_slug>/builds/new', methods=('GET', 'POST'))
+@APP.route('/projects/<project_slug>/jobs/new', methods=('GET', 'POST'))
 @login_or_github_required
-def build_new_view(project_slug):
+def job_new_view(project_slug):
     """
-    View to create a new build
+    View to create a new job
     """
     project = Project(slug=project_slug)
     if not project.exists():
         abort(404)
 
     if request.method == 'POST':
-        build = Build(project=project)
-        build.repo = project.repo
+        job = Job(project=project)
+        job.repo = project.repo
 
-        build_url = url_for('build_view',
-                            project_slug=project_slug,
-                            build_slug=build.slug)
+        job_url = url_for('job_view',
+                          project_slug=project_slug,
+                          job_slug=job.slug)
 
         if 'X-Github-Event' in request.headers:
             if not project.github_secret:
@@ -68,7 +68,7 @@ def build_new_view(project_slug):
 
             if request.headers['X-Github-Event'] == 'push':
                 push_data = request.json
-                build.commit = push_data['head_commit']['id']
+                job.commit = push_data['head_commit']['id']
 
             else:
                 logging.debug("Unknown GitHub hook '%s'",
@@ -76,10 +76,10 @@ def build_new_view(project_slug):
                 abort(501)
 
             try:
-                build.save()
-                build.queue()
+                job.save()
+                job.queue()
 
-                return build_url, 201
+                return job_url, 201
 
             except ValidationError as ex:
                 logging.exception("GitHub hook error")
@@ -88,49 +88,49 @@ def build_new_view(project_slug):
                 }), 400
 
         else:
-            build.commit = request.form['commit']
+            job.commit = request.form['commit']
 
             try:
-                build.save()
-                build.queue()
+                job.save()
+                job.queue()
 
-                flash(u"Build queued", 'success')
-                return redirect(build_url, 303)
+                flash(u"Job queued", 'success')
+                return redirect(job_url, 303)
 
             except ValidationError as ex:
                 flash(ex.messages, 'danger')
 
-    return render_template('build_new.html', build=Build(project=project))
+    return render_template('job_new.html', job=Job(project=project))
 
 
-@APP.route('/projects/<project_slug>/builds/<build_slug>.json',
+@APP.route('/projects/<project_slug>/jobs/<job_slug>.json',
            methods=('GET',))
-def build_output_json(project_slug, build_slug):
+def job_output_json(project_slug, job_slug):
     """
-    View to download some build info in JSON
+    View to download some job info in JSON
     """
     project = Project(slug=project_slug)
-    build = Build(project=project, slug=build_slug)
-    if not build.exists():
+    job = Job(project=project, slug=job_slug)
+    if not job.exists():
         abort(404)
 
-    return Response(json.dumps(build.as_dict(),
+    return Response(json.dumps(job.as_dict(),
                                cls=DateTimeEncoder
                                ),
                     mimetype='application/json')
 
 
-@APP.route('/projects/<project_slug>/builds/<build_slug>/output/<filename>',
+@APP.route('/projects/<project_slug>/jobs/<job_slug>/output/<filename>',
            methods=('GET',))
-def build_output_view(project_slug, build_slug, filename):
+def job_output_view(project_slug, job_slug, filename):
     """
-    View to download some build output
+    View to download some job output
     """
     project = Project(slug=project_slug)
-    build = Build(project=project, slug=build_slug)
+    job = Job(project=project, slug=job_slug)
 
     # TODO possible security issue opending files from user input like this
-    data_file_path = build.build_output_path().join(filename)
+    data_file_path = job.job_output_path().join(filename)
     if not data_file_path.check(file=True):
         abort(404)
 
@@ -144,12 +144,12 @@ def build_output_view(project_slug, build_slug, filename):
                 yield data
 
                 is_live_log = (
-                    build.state == 'running' and
-                    filename == "%s.log" % build.build_stage_slugs[-1]
+                    job.state == 'running' and
+                    filename == "%s.log" % job.job_stage_slugs[-1]
                 )
                 if is_live_log:
                     select.select((handle,), (), (), 2)
-                    build.load()
+                    job.load()
 
                 elif len(data) == 0:
                     return

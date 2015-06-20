@@ -13,6 +13,7 @@
 - Server host tests on config page #151
 - GitHub recieves build status updates #161
 - Rename "job" to "project" #172
+- Rename "build" to "job" #173
 
 ## v0.0.3
 - Log level to debug #20
