@@ -1,5 +1,5 @@
 """
-Main build stages that constitute a build
+Main job stages that constitute a job
 """
 
 import json
@@ -9,15 +9,15 @@ import docker
 import docker.errors
 
 from dockci.exceptions import AlreadyBuiltError
-from dockci.models.build_meta.stages import BuildStageBase, DockerStage
+from dockci.models.job_meta.stages import JobStageBase, DockerStage
 from dockci.util import is_semantic
 
 
-class ExternalStatusStage(BuildStageBase):
-    """ Send the build status to external providers """
+class ExternalStatusStage(JobStageBase):
+    """ Send the job status to external providers """
 
-    def __init__(self, build, suffix):
-        super(ExternalStatusStage, self).__init__(build)
+    def __init__(self, job, suffix):
+        super(ExternalStatusStage, self).__init__(job)
         self.slug = 'external_status_%s' % suffix
 
     # TODO state, state_msg, context config via OO means
@@ -29,12 +29,12 @@ class ExternalStatusStage(BuildStageBase):
         """
         Update the GitHub status for the project, handling feedback by writing
         to a log handle. Expected to be run from inside a stage in order to
-        write to the build log
+        write to the job log
         """
 
         handle.write("Submitting status to GitHub... ".encode())
         handle.flush()
-        response = self.build.send_github_status(state, state_msg, context)
+        response = self.job.send_github_status(state, state_msg, context)
 
         if response.status == 201:
             handle.write("DONE!\n".encode())
@@ -54,7 +54,7 @@ class ExternalStatusStage(BuildStageBase):
 
     def runnable(self, handle):
         success = None
-        if self.build.project.github_repo_id:
+        if self.job.project.github_repo_id:
             success = self._send_github_status_stage(handle)
 
         if success is None:
@@ -65,16 +65,16 @@ class ExternalStatusStage(BuildStageBase):
         return 0 if success else 1
 
 
-class BuildDockerStage(DockerStage):
+class BuildStage(DockerStage):
     """
-    Tell the Docker host to build
+    Tell the Docker host to job
     """
 
     slug = 'docker_build'
     built_re = re.compile(r'Successfully built ([0-9a-f]+)')
 
-    def __init__(self, build, workdir):
-        super(BuildDockerStage, self).__init__(build)
+    def __init__(self, job, workdir):
+        super(BuildStage, self).__init__(job)
         self.workdir = workdir
         self.tag = None
         self.no_cache = None
@@ -82,34 +82,34 @@ class BuildDockerStage(DockerStage):
     def runnable_docker(self):
         """
         Determine the image tag, and cache flag value, then trigger a Docker
-        image build, returning the output stream so that DockerStage can handle
+        image job, returning the output stream so that DockerStage can handle
         the output
         """
-        tag = self.build.docker_full_name
-        if self.build.tag is not None:
+        tag = self.job.docker_full_name
+        if self.job.tag is not None:
             existing_image = None
-            for image in self.build.docker_client.images(
-                name=self.build.project_slug,
+            for image in self.job.docker_client.images(
+                name=self.job.project_slug,
             ):
                 if tag in image['RepoTags']:
                     existing_image = image
                     break
 
             if existing_image is not None:
-                # Do not override existing builds of _versioned_ tagged code
-                if is_semantic(self.build.tag):
+                # Do not override existing jobs of _versioned_ tagged code
+                if is_semantic(self.job.tag):
                     raise AlreadyBuiltError(
                         'Version %s of %s already built' % (
-                            self.build.tag,
-                            self.build.project_slug,
+                            self.job.tag,
+                            self.job.project_slug,
                         )
                     )
-                # Delete existing builds of _non-versioned_ tagged code
+                # Delete existing jobs of _non-versioned_ tagged code
                 # (allows replacement of images)
                 else:
                     # TODO it would be nice to inform the user of this action
                     try:
-                        self.build.docker_client.remove_image(
+                        self.job.docker_client.remove_image(
                             image=existing_image['Id'],
                         )
                     except docker.errors.APIError:
@@ -117,13 +117,13 @@ class BuildDockerStage(DockerStage):
                         pass
 
         # Don't use the docker caches if a version tag is defined
-        no_cache = (self.build.tag is not None)
+        no_cache = (self.job.tag is not None)
 
-        return self.build.docker_client.build(path=self.workdir.strpath,
-                                              tag=tag,
-                                              nocache=no_cache,
-                                              rm=True,
-                                              stream=True)
+        return self.job.docker_client.build(path=self.workdir.strpath,
+                                            tag=tag,
+                                            nocache=no_cache,
+                                            rm=True,
+                                            stream=True)
 
     def on_done(self, line):
         """
@@ -136,7 +136,7 @@ class BuildDockerStage(DockerStage):
             line_data = json.loads(line)
             re_match = self.built_re.search(line_data.get('stream', ''))
             if re_match:
-                self.build.image_id = re_match.group(1)
+                self.job.image_id = re_match.group(1)
                 return 0
 
         return 1
@@ -154,11 +154,11 @@ class TestStage(DockerStage):
         Create a container instance, attach to its outputs and then start it,
         returning the output stream
         """
-        container_details = self.build.docker_client.create_container(
-            self.build.image_id, 'ci'
+        container_details = self.job.docker_client.create_container(
+            self.job.image_id, 'ci'
         )
-        self.build.container_id = container_details['Id']
-        self.build.save()
+        self.job.container_id = container_details['Id']
+        self.job.save()
 
         def link_tuple(service_info):
             """
@@ -167,7 +167,7 @@ class TestStage(DockerStage):
             """
             if 'name' not in service_info:
                 service_info['name'] = \
-                    self.build.docker_client.inspect_container(
+                    self.job.docker_client.inspect_container(
                         service_info['id']
                     )['Name'][1:]  # slice to remove the / from start
 
@@ -183,16 +183,16 @@ class TestStage(DockerStage):
 
             return (service_info['name'], service_info['alias'])
 
-        stream = self.build.docker_client.attach(
-            self.build.container_id,
+        stream = self.job.docker_client.attach(
+            self.job.container_id,
             stream=True,
         )
-        self.build.docker_client.start(
-            self.build.container_id,
+        self.job.docker_client.start(
+            self.job.container_id,
             links=[
                 link_tuple(service_info)
                 # pylint:disable=protected-access
-                for service_info in self.build._provisioned_containers
+                for service_info in self.job._provisioned_containers
             ]
         )
 
@@ -202,9 +202,9 @@ class TestStage(DockerStage):
         """
         Check container exit code and return True on 0, or False otherwise
         """
-        details = self.build.docker_client.inspect_container(
-            self.build.container_id,
+        details = self.job.docker_client.inspect_container(
+            self.job.container_id,
         )
-        self.build.exit_code = details['State']['ExitCode']
-        self.build.save()
+        self.job.exit_code = details['State']['ExitCode']
+        self.job.save()
         return details['State']['ExitCode']

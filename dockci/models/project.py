@@ -41,72 +41,72 @@ class Project(Model):  # pylint:disable=too-few-public-methods
         super(Project, self).__init__()
         self.slug = slug
 
-    def _all_builds(self, reverse_=True):
+    def _all_jobs(self, reverse_=True):
         """
-        Get all the builds associated with this project
+        Get all the jobs associated with this project
         """
-        from dockci.models.build import Build
+        from dockci.models.job import Job
 
         try:
-            builds = []
+            jobs = []
 
-            all_files = Build.data_dir_path().join(self.slug).listdir()
+            all_files = Job.data_dir_path().join(self.slug).listdir()
             all_files.sort(reverse=reverse_)
 
             for filename in all_files:
                 if is_yaml_file(filename):
-                    builds.append(Build(project=self,
-                                        slug=filename.purebasename))
+                    jobs.append(Job(project=self,
+                                    slug=filename.purebasename))
 
-            return builds
+            return jobs
 
         except py.error.ENOENT:
             return []
 
-    def latest_build(self, passed=None, versioned=None, other_check=None):
+    def latest_job(self, passed=None, versioned=None, other_check=None):
         """
-        Find the latest build matching the criteria
+        Find the latest job matching the criteria
         """
         try:
-            return next(self.filtered_builds(passed, versioned, other_check))
+            return next(self.filtered_jobs(passed, versioned, other_check))
 
         except StopIteration:
             return None
 
-    def filtered_builds(self, passed=None, versioned=None, other_check=None):
+    def filtered_jobs(self, passed=None, versioned=None, other_check=None):
         """
-        Generator, filtering builds matching the criteria
+        Generator, filtering jobs matching the criteria
         """
-        for build in list(self.builds):
-            # build_passed is used only in this loop iter
+        for job in list(self.jobs):
+            # job_passed is used only in this loop iter
             # pylint:disable=cell-var-from-loop
-            build_passed = lambda: build.result == 'success'  # lazy load
-            if passed is not None and build_passed() != passed:
+            job_passed = lambda: job.result == 'success'  # lazy load
+            if passed is not None and job_passed() != passed:
                 continue
-            if versioned is not None and build.tag is None:
+            if versioned is not None and job.tag is None:
                 continue
-            if other_check is not None and not other_check(build):
+            if other_check is not None and not other_check(job):
                 continue
 
-            yield build
+            yield job
 
-    def latest_build_ancestor(self,
-                              workdir,
-                              commit,
-                              passed=None,
-                              versioned=None):
+    def latest_job_ancestor(self,
+                            workdir,
+                            commit,
+                            passed=None,
+                            versioned=None):
         """
-        Find the latest build, matching the criteria, who's a git ancestor of
+        Find the latest job, matching the criteria, who's a git ancestor of
         the given commit
         """
 
-        def check_build(build):
+        def check_job(job):
             """
             Use git merge-base to check
             """
-            return is_git_ancestor(workdir, build.commit, commit)
+            return is_git_ancestor(workdir, job.commit, commit)
 
-        return self.latest_build(passed, versioned, check_build)
+        return self.latest_job(passed, versioned, check_job)
 
     def validate(self):
         with self.parent_validation(Project):
@@ -137,7 +137,7 @@ class Project(Model):  # pylint:disable=too-few-public-methods
             'events': ['push'],
             'active': True,
             'config': {
-                'url': self.build_new_url_ext,
+                'url': self.job_new_url_ext,
                 'secret': secret,
                 'content_type': 'json',
                 'insecure_ssl': '0',
@@ -178,14 +178,14 @@ class Project(Model):  # pylint:disable=too-few-public-methods
         return url_for('project_view', slug=self.slug)
 
     @property
-    def build_new_url(self):
+    def job_new_url(self):
         """ URL for this project """
-        return url_for('build_new_view', project_slug=self.slug)
+        return url_for('job_new_view', project_slug=self.slug)
 
     @property
-    def build_new_url_ext(self):
+    def job_new_url_ext(self):
         """ URL for this project """
-        return url_for('build_new_view',
+        return url_for('job_new_view',
                        project_slug=self.slug,
                        _external=True)
 
@@ -203,4 +203,4 @@ class Project(Model):  # pylint:disable=too-few-public-methods
         self.github_auth_user_slug
     ), default=lambda _: None)
 
-    builds = OnAccess(_all_builds)
+    jobs = OnAccess(_all_jobs)

@@ -1,5 +1,5 @@
 """
-Stages in a Build
+Stages in a Job
 """
 
 import logging
@@ -8,13 +8,13 @@ import subprocess
 from dockci.exceptions import AlreadyRunError
 
 
-class BuildStageBase(object):
+class JobStageBase(object):
     """
-    A logged stage to a build
+    A logged stage to a job
     """
 
-    def __init__(self, build):
-        self.build = build
+    def __init__(self, job):
+        self.job = job
         self.returncode = None
 
     def runnable(self, handle):
@@ -25,7 +25,7 @@ class BuildStageBase(object):
         """
         File that stage output is logged to
         """
-        return self.build.build_output_path().join(
+        return self.job.job_output_path().join(
             '%s.log' % self.slug  # pylint:disable=no-member
         )
 
@@ -36,18 +36,18 @@ class BuildStageBase(object):
         ``expected_rc``. If ``expected_rc`` is None, always return true
         """
         # pylint:disable=no-member
-        logging.getLogger('dockci.build.stages').debug(
-            "Starting '%s' build stage for build '%s'",
-            self.slug, self.build.slug,
+        logging.getLogger('dockci.job.stages').debug(
+            "Starting '%s' job stage for job '%s'",
+            self.slug, self.job.slug,
         )
 
         if self.returncode is not None:
             raise AlreadyRunError(self)
 
-        self.build.build_stage_slugs.append(self.slug)
-        self.build.save()
+        self.job.job_stage_slugs.append(self.slug)
+        self.job.save()
 
-        self.build.build_output_path().ensure_dir()
+        self.job.job_output_path().ensure_dir()
         with self.data_file_path().open('wb') as handle:
             self.returncode = self.runnable(handle)
 
@@ -56,7 +56,7 @@ class BuildStageBase(object):
 
         success = self.returncode == expected_rc
         if not success:
-            logging.getLogger('dockci.build.stages').debug(
+            logging.getLogger('dockci.job.stages').debug(
                 "Stage '%s' expected return of '%s'. Actually got '%s'",
                 self.slug, expected_rc, self.returncode,
             )
@@ -64,11 +64,11 @@ class BuildStageBase(object):
         return success
 
 
-class BuildStage(BuildStageBase):
-    """ Ad-hoc build stage """
+class JobStage(JobStageBase):
+    """ Ad-hoc job stage """
 
-    def __init__(self, build, slug, runnable=None, workdir=None):
-        super(BuildStage, self).__init__(build)
+    def __init__(self, job, slug, runnable=None, workdir=None):
+        super(JobStage, self).__init__(job)
         self.slug = slug
         self.workdir = workdir
         self._runnable = runnable
@@ -78,24 +78,24 @@ class BuildStage(BuildStageBase):
         return self._runnable(*args, **kwargs)
 
     @classmethod
-    def from_command(cls, build, slug, cwd, cmd_args):
+    def from_command(cls, job, slug, cwd, cmd_args):
         """
-        Create a BuildStage object from a system command
+        Create a JobStage object from a system command
         """
-        stage = CommandBuildStage(build, cwd, cmd_args)
+        stage = CommandJobStage(job, cwd, cmd_args)
         setattr(stage, 'slug', slug)
         return stage
 
 
-class CommandBuildStage(BuildStageBase):  # pylint:disable=abstract-method
+class CommandJobStage(JobStageBase):  # pylint:disable=abstract-method
     """
-    A build stage that represents a series of commands
+    A job stage that represents a series of commands
     """
 
     # pylint:disable=arguments-differ
-    def __init__(self, build, workdir, cmd_args):
+    def __init__(self, job, workdir, cmd_args):
         assert len(cmd_args) > 0, "cmd_args are given"
-        super(CommandBuildStage, self).__init__(build)
+        super(CommandJobStage, self).__init__(job)
         self.workdir = workdir
         self.cmd_args = cmd_args
 
@@ -140,7 +140,7 @@ class CommandBuildStage(BuildStageBase):  # pylint:disable=abstract-method
             return run_one_cmd(self.cmd_args)
 
 
-class DockerStage(BuildStageBase):
+class DockerStage(JobStageBase):
     """
     Wrapper around common Docker command process. Will send output lines to
     file, and optionally use callbacks to notify on each line, and

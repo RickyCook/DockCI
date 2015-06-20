@@ -95,7 +95,7 @@ def app_init_views():
     # pylint:disable=unused-variable
     import dockci.views.core
 
-    import dockci.views.build
+    import dockci.views.job
     import dockci.views.external
     import dockci.views.project
     import dockci.views.oauth

@@ -1,62 +1,62 @@
 {% extends "_base.html" %}
-{% block title %}{{ build.project.name }} Build Result{% endblock %}
+{% block title %}{{ job.project.name }} Job Result{% endblock %}
 {% block header %}
-  <a href="/projects/{{ build.project.slug }}">{{ build.project.name }}</a> <small>{{ build.create_ts }}</small>
-  <span class="pull-right" id="build-state">{{ build_state_glyph(build.state) }}</span>
+  <a href="/projects/{{ job.project.slug }}">{{ job.project.name }}</a> <small>{{ job.create_ts }}</small>
+  <span class="pull-right" id="job-state">{{ job_state_glyph(job.state) }}</span>
 {% endblock %}
 {% block content %}
 <ul class="nav nav-pills" role="tablist" style="position:absolute; right: 0; z-index: 10">
-  <li role="presentation" class="active"><a href="#build-details" role="tab" data-toggle="tab"><i class="mdi-action-list"></i></a></li>
-  <li role="presentation"><a href="#build-output" role="tab" data-toggle="tab"><i class="mdi-file-cloud-download"></i></a></li>
+  <li role="presentation" class="active"><a href="#job-details" role="tab" data-toggle="tab"><i class="mdi-action-list"></i></a></li>
+  <li role="presentation"><a href="#job-output" role="tab" data-toggle="tab"><i class="mdi-file-cloud-download"></i></a></li>
 </ul>
 <div class="tab-content">
-  <div role="tabpanel" class="tab-pane active form-horizontal" id="build-details">
+  <div role="tabpanel" class="tab-pane active form-horizontal" id="job-details">
     <div class="form-group">
       <label class="col-sm-2 control-label">Repo</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ build.repo }}</p></div>
+      <div class="col-sm-10"><p class="form-control-static">{{ job.repo }}</p></div>
     </div>
     <div class="form-group">
       <!-- This will update to a full hash after the git_info stage -->
       <label class="col-sm-2 control-label">Commit ref</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ build.commit }}</p></div>
+      <div class="col-sm-10"><p class="form-control-static">{{ job.commit }}</p></div>
     </div>
-    {% if build.git_author_name or build.git_author_email %}<div class="form-group">
+    {% if job.git_author_name or job.git_author_email %}<div class="form-group">
       <label class="col-sm-2 control-label">Author</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ git_user(build.git_author_name, build.git_author_email) }}</div>
+      <div class="col-sm-10"><p class="form-control-static">{{ git_user(job.git_author_name, job.git_author_email) }}</div>
     </div>{% endif %}
-    {% if (build.git_committer_name or build.git_committer_email) and (build.git_committer_name != build.git_author_name or build.git_committer_email != build.git_author_email) %}<div class="form-group">
+    {% if (job.git_committer_name or job.git_committer_email) and (job.git_committer_name != job.git_author_name or job.git_committer_email != job.git_author_email) %}<div class="form-group">
       <label class="col-sm-2 control-label">Committer</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ git_user(build.git_committer_name, build.git_committer_email) }}</div>
+      <div class="col-sm-10"><p class="form-control-static">{{ git_user(job.git_committer_name, job.git_committer_email) }}</div>
     </div>{% endif %}
-    {% if build.tag %}<div class="form-group">
+    {% if job.tag %}<div class="form-group">
       <label class="col-sm-2 control-label">Tag</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ build.tag }}</p></div>
+      <div class="col-sm-10"><p class="form-control-static">{{ job.tag }}</p></div>
     </div>{% endif %}
-    {% if build.has_value('ancestor_build_slug') %}<div class="form-group">
-      <label class="col-sm-2 control-label">Previous build</label>
+    {% if job.has_value('ancestor_job_slug') %}<div class="form-group">
+      <label class="col-sm-2 control-label">Previous job</label>
       <div class="col-sm-10"><p class="form-control-static">
-        <a href="/projects/{{ build.project.slug }}/builds/{{ build.ancestor_build.slug }}">{{ build.ancestor_build_slug }}</a>
+        <a href="/projects/{{ job.project.slug }}/jobs/{{ job.ancestor_job.slug }}">{{ job.ancestor_job_slug }}</a>
       </p></div>
     </div>{% endif %}
-    {% if build.image_id %}<div class="form-group">
+    {% if job.image_id %}<div class="form-group">
       <label class="col-sm-2 control-label">Image ID</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ build.image_id }}</p></div>
+      <div class="col-sm-10"><p class="form-control-static">{{ job.image_id }}</p></div>
     </div>{% endif %}
-    {% if build.container_id %}<div class="form-group">
+    {% if job.container_id %}<div class="form-group">
       <label class="col-sm-2 control-label">Container ID</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ build.container_id }}</p></div>
+      <div class="col-sm-10"><p class="form-control-static">{{ job.container_id }}</p></div>
     </div>{% endif %}
-    {% if build.exit_code %}<div class="form-group">
+    {% if job.exit_code %}<div class="form-group">
       <label class="col-sm-2 control-label">Exit Code</label>
-      <div class="col-sm-10"><p class="form-control-static">{{ build.exit_code }}</p></div>
+      <div class="col-sm-10"><p class="form-control-static">{{ job.exit_code }}</p></div>
     </div>{% endif %}
   </div>
-  <div role="tabpanel" class="tab-pane form-horizontal" id="build-output">
+  <div role="tabpanel" class="tab-pane form-horizontal" id="job-output">
     <style>
-      .build-output-download:hover {
+      .job-output-download:hover {
         padding-right: 20px;
       }
-      .build-output-download:hover::after {
+      .job-output-download:hover::after {
         content: ' - download tar';
       }
       .stage-panel .panel-heading {
@@ -82,11 +82,11 @@
         right: 20px;
       }
     </style>
-    {% for name, details in build.build_output_details.items() %}
+    {% for name, details in job.job_output_details.items() %}
       <div class="form-group">
         <label class="col-sm-2 control-label">{{ name }}</label>
         <div class="col-sm-10"><p class="form-control-static">
-          <a href="{{ details.link }}" class="build-output-download">{{ details.size }}</a>
+          <a href="{{ details.link }}" class="job-output-download">{{ details.size }}</a>
         </p></div>
       </div>
     {% else %}
@@ -94,11 +94,11 @@
     {% endfor %}
   </div>
 </div>
-<h2>Build Log</h2>
-<div id="build-stages"></div>
+<h2>Job Log</h2>
+<div id="job-stages"></div>
 <div id="auto-scroll" class="btn btn-info btn-fab"><i class="mdi-editor-vertical-align-bottom"></i></div>
 <script>
-  function dockciBuild() {
+  function dockciJob() {
     var stageAjaxQueue = {},
         importantPanels = ['docker_build', 'docker_test', 'error'],
         dockerStages = ['docker_provision', 'docker_build', 'docker_push'],
@@ -154,9 +154,9 @@
       })
 
       if (idx == 0) {
-        $('#build-stages').append(created);
+        $('#job-stages').append(created);
       } else {
-        created.insertAfter($('#build-stages').children()[idx - 1]);
+        created.insertAfter($('#job-stages').children()[idx - 1]);
       }
 
       return created
@@ -181,7 +181,7 @@
       }
       return lineId;
     }
-    function dockerBuildLine(panelEl, logEl, obj) {
+    function dockerJobLine(panelEl, logEl, obj) {
       var idRow, objLine, errorMessage
           isObj = typeof(obj) === 'object';
 
@@ -253,7 +253,7 @@
       delete stageAjaxQueue[sortedQueueIndexes[0]]
 
       $.ajax({
-        url: '/projects/{{ build.project.slug }}/builds/{{ build.slug }}/output/' + stageData['slug'] + '.log',
+        url: '/projects/{{ job.project.slug }}/jobs/{{ job.slug }}/output/' + stageData['slug'] + '.log',
         xhrFields: {
           onprogress: function(e) {
             var logEl = $('.panel-body', stageData['stageEl']),
@@ -279,7 +279,7 @@
                   value = $.parseJSON(value);
                 } catch (err) {}
 
-                dockerBuildLine(stageData['stageEl'], logEl, value);
+                dockerJobLine(stageData['stageEl'], logEl, value);
               }, '');
             } else {
               lastLine = $('div:last', logEl)
@@ -303,7 +303,7 @@
           $('i.loading', stageData['stageEl']).hide();
           $('i.expand-toggle', stageData['stageEl']).show();
           processNextStage();
-          refreshBuildInfo();
+          refreshJobInfo();
         },
         success: function(jqXHR, textStatus) {
           var panelClass = 'panel-success';
@@ -331,13 +331,13 @@
       }
     }
 
-    function refreshBuildInfo() {
+    function refreshJobInfo() {
       $.ajax({
-        url: '/projects/{{ build.project.slug }}/builds/{{ build.slug }}.json',
+        url: '/projects/{{ job.project.slug }}/jobs/{{ job.slug }}.json',
         dataType: 'json',
         success: function(data, textStatus, jqXHR) {
           var stageEl;
-          $.each(data.build_stage_slugs, function(idx, slug) {
+          $.each(data.job_stage_slugs, function(idx, slug) {
             if (! getExistingStageEl(slug)) {
               stageEl = createNewStageEl(idx, slug);
               queueStageLoad(idx, stageEl, slug);
@@ -355,8 +355,8 @@
       icon.toggleClass('mdi-editor-vertical-align-bottom', !scrollEnabled);
     });
 
-    refreshBuildInfo()
+    refreshJobInfo()
   };
-  dockciBuild();
+  dockciJob();
 </script>
 {% endblock %}

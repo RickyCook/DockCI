@@ -1,8 +1,8 @@
 """
-Build stages that occur after a build is complete
+Job stages that occur after a job is complete
 """
 
-from dockci.models.build_meta.stages import BuildStageBase, DockerStage
+from dockci.models.job_meta.stages import JobStageBase, DockerStage
 from dockci.server import CONFIG
 from dockci.util import bytes_human_readable, stream_write_status
 
@@ -19,18 +19,18 @@ class PushStage(DockerStage):
         """
         Perform the actual Docker push operation
         """
-        if self.build.tag and CONFIG.docker_use_registry:
-            return self.build.docker_client.push(
-                self.build.docker_image_name,
-                tag=self.build.tag,
+        if self.job.tag and CONFIG.docker_use_registry:
+            return self.job.docker_client.push(
+                self.job.docker_image_name,
+                tag=self.job.tag,
                 stream=True,
                 insecure_registry=CONFIG.docker_registry_insecure,
             )
 
 
-class FetchStage(BuildStageBase):
+class FetchStage(JobStageBase):
     """
-    Fetches any output specified in build config
+    Fetches any output specified in job config
     """
 
     slug = 'docker_fetch'
@@ -40,17 +40,17 @@ class FetchStage(BuildStageBase):
         Fetch/save the files
         """
         # pylint:disable=no-member
-        mappings = self.build.build_config.build_output.items()
+        mappings = self.job.job_config.job_output.items()
         for key, docker_fn in mappings:
             handle.write(
                 ("Fetching %s from '%s'..." % (key, docker_fn)).encode()
             )
-            resp = self.build.docker_client.copy(
-                self.build.container_id, docker_fn,
+            resp = self.job.docker_client.copy(
+                self.job.container_id, docker_fn,
             )
 
             if 200 <= resp.status < 300:
-                output_path = self.build.build_output_path().join(
+                output_path = self.job.job_output_path().join(
                     '%s.tar' % key
                 )
                 with output_path.open('wb') as output_fh:
@@ -78,9 +78,9 @@ class FetchStage(BuildStageBase):
         return 0
 
 
-class CleanupStage(BuildStageBase):
+class CleanupStage(JobStageBase):
     """
-    Clean up after the build/test
+    Clean up after the job/test
     """
 
     slug = 'cleanup'
@@ -101,28 +101,28 @@ class CleanupStage(BuildStageBase):
                 "FAILED!",
             )
 
-        if self.build.container_id:
-            with cleanup_context('container', self.build.container_id):
-                self.build.docker_client.remove_container(
-                    self.build.container_id,
+        if self.job.container_id:
+            with cleanup_context('container', self.job.container_id):
+                self.job.docker_client.remove_container(
+                    self.job.container_id,
                 )
 
         # pylint:disable=protected-access
-        if self.build._provisioned_containers:
-            for service_info in self.build._provisioned_containers:
+        if self.job._provisioned_containers:
+            for service_info in self.job._provisioned_containers:
                 ctx = cleanup_context('provisioned container',
                                       service_info['id'])
                 with ctx:
-                    self.build.docker_client.remove_container(
+                    self.job.docker_client.remove_container(
                         service_info['id'],
                         force=True,
                     )
 
-        # Only clean up image if this is an non-tagged build
-        if self.build.tag is None or self.build.result in ('error', 'fail'):
-            if self.build.image_id:
-                with cleanup_context('image', self.build.image_id):
-                    self.build.docker_client.remove_image(self.build.image_id)
+        # Only clean up image if this is an non-tagged job
+        if self.job.tag is None or self.job.result in ('error', 'fail'):
+            if self.job.image_id:
+                with cleanup_context('image', self.job.image_id):
+                    self.job.docker_client.remove_image(self.job.image_id)
 
         # TODO catch failures
         return 0

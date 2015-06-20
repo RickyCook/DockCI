@@ -1,5 +1,5 @@
 """
-Preparation for the main build stages
+Preparation for the main job stages
 """
 
 import re
@@ -9,51 +9,51 @@ import docker
 import docker.errors
 
 from dockci.models.project import Project
-from dockci.models.build_meta.config import BuildConfig
-from dockci.models.build_meta.stages import BuildStageBase, CommandBuildStage
+from dockci.models.job_meta.config import JobConfig
+from dockci.models.job_meta.stages import JobStageBase, CommandJobStage
 from dockci.server import CONFIG
 from dockci.util import docker_ensure_image, FauxDockerLog
 
 
-class WorkdirStage(CommandBuildStage):
+class WorkdirStage(CommandJobStage):
     """ Prepare the working directory """
 
     slug = 'git_prepare'
 
-    def __init__(self, build, workdir):
+    def __init__(self, job, workdir):
         super(WorkdirStage, self).__init__(
-            build, workdir, (
-                ['git', 'clone', build.repo, workdir.strpath],
+            job, workdir, (
+                ['git', 'clone', job.repo, workdir.strpath],
                 ['git',
                  '-c', 'advice.detachedHead=false',
-                 'checkout', build.commit
+                 'checkout', job.commit
                  ],
             )
         )
 
     def runnable(self, handle):
         """
-        Clone and checkout the build
+        Clone and checkout the job
         """
         result = super(WorkdirStage, self).runnable(handle)
 
-        # check for, and load build config
-        build_config_file = self.workdir.join(BuildConfig.slug)
-        if build_config_file.check(file=True):
+        # check for, and load job config
+        job_config_file = self.workdir.join(JobConfig.slug)
+        if job_config_file.check(file=True):
             # pylint:disable=no-member
-            self.build.build_config.load(data_file=build_config_file)
-            self.build.build_config.save()
+            self.job.job_config.load(data_file=job_config_file)
+            self.job.job_config.save()
 
         return result
 
 
-class GitInfoStage(BuildStageBase):
-    """ Fill the Build with information obtained from the git repo """
+class GitInfoStage(JobStageBase):
+    """ Fill the Job with information obtained from the git repo """
 
     slug = 'git_info'
 
-    def __init__(self, build, workdir):
-        super(GitInfoStage, self).__init__(build)
+    def __init__(self, job, workdir):
+        super(GitInfoStage, self).__init__(job)
         self.workdir = workdir
 
     def runnable(self, handle):
@@ -92,34 +92,34 @@ class GitInfoStage(BuildStageBase):
             value = proc.stdout.read().decode().strip()
 
             if value != '' and proc.returncode == 0:
-                setattr(self.build, attr_name, value)
+                setattr(self.job, attr_name, value)
                 properties_empty = False
                 handle.write((
                     "%s is %s\n" % (display_name, value)
                 ).encode())
 
-        ancestor_build = self.build.project.latest_build_ancestor(
+        ancestor_job = self.job.project.latest_job_ancestor(
             self.workdir,
-            self.build.commit,
+            self.job.commit,
         )
-        if ancestor_build:
+        if ancestor_job:
             properties_empty = False
             handle.write((
-                "Ancestor build is %s\n" % ancestor_build.slug
+                "Ancestor job is %s\n" % ancestor_job.slug
             ).encode())
-            self.build.ancestor_build = ancestor_build
+            self.job.ancestor_job = ancestor_job
 
         if properties_empty:
             handle.write("No information about the git commit could be "
                          "derived\n".encode())
 
         else:
-            self.build.save()
+            self.job.save()
 
         return proc.returncode
 
 
-class GitChangesStage(CommandBuildStage):
+class GitChangesStage(CommandJobStage):
     """
     Get a list of changes from git between now and the most recently built
     ancestor
@@ -127,12 +127,12 @@ class GitChangesStage(CommandBuildStage):
 
     slug = 'git_changes'
 
-    def __init__(self, build, workdir):
+    def __init__(self, job, workdir):
         cmd_args = []
-        if build.has_value('ancestor_build'):
+        if job.has_value('ancestor_job'):
             revision_range_string = '%s..%s' % (
-                build.ancestor_build.commit,  # pylint:disable=no-member
-                build.commit,
+                job.ancestor_job.commit,  # pylint:disable=no-member
+                job.commit,
             )
 
             cmd_args = [
@@ -140,28 +140,28 @@ class GitChangesStage(CommandBuildStage):
                 '-c', 'color.ui=always',
                 'log', revision_range_string
             ]
-        super(GitChangesStage, self).__init__(build, workdir, cmd_args)
+        super(GitChangesStage, self).__init__(job, workdir, cmd_args)
 
     def runnable(self, handle):
         # TODO fix YAML model to return None rather than an empty model so that
-        #      if self.ancestor_build will work
+        #      if self.ancestor_job will work
         if self.cmd_args:
             return super(GitChangesStage, self).runnable(handle)
 
         return True
 
 
-class TagVersionStage(CommandBuildStage):
+class TagVersionStage(CommandJobStage):
     """
-    Try and add a version to the build, based on git tag
+    Try and add a version to the job, based on git tag
     """
 
     slug = 'git_tag'
     tag_re = re.compile(r'[a-z0-9_.]')
 
-    def __init__(self, build, workdir):
+    def __init__(self, job, workdir):
         super(TagVersionStage, self).__init__(
-            build, workdir,
+            job, workdir,
             ['git', 'describe', '--tags', '--exact-match'],
         )
 
@@ -180,8 +180,8 @@ class TagVersionStage(CommandBuildStage):
                         last_line = line
 
                 if last_line:
-                    self.build.tag = last_line
-                    self.build.save()
+                    self.job.tag = last_line
+                    self.job.save()
 
         except KeyError:
             pass
@@ -189,9 +189,9 @@ class TagVersionStage(CommandBuildStage):
         return returncode
 
 
-class ProvisionStage(BuildStageBase):
+class ProvisionStage(JobStageBase):
     """
-    Provision the services that are required for this build
+    Provision the services that are required for this job
     """
 
     slug = 'docker_provision'
@@ -202,7 +202,7 @@ class ProvisionStage(BuildStageBase):
         """
         all_okay = True
         # pylint:disable=no-member
-        services = self.build.build_config.services
+        services = self.job.job_config.services
         for project_slug, service_config in services.items():
             faux_log = FauxDockerLog(handle)
 
@@ -217,11 +217,11 @@ class ProvisionStage(BuildStageBase):
                     all_okay = False
                     continue
 
-                service_build = service_project.latest_build(passed=True,
-                                                             versioned=True)
-                if not service_build:
+                service_job = service_project.latest_job(passed=True,
+                                                         versioned=True)
+                if not service_job:
                     faux_log.update(
-                        error="No successful, versioned build for %s" % (
+                        error="No successful, versioned job for %s" % (
                             service_project.name
                         ),
                     )
@@ -231,7 +231,7 @@ class ProvisionStage(BuildStageBase):
             defaults = {
                 'status': "Starting service %s %s" % (
                     service_project.name,
-                    service_build.tag,
+                    service_job.tag,
                 ),
                 'id': 'docker_provision_%s' % project_slug,
             }
@@ -240,10 +240,10 @@ class ProvisionStage(BuildStageBase):
 
                 try:
                     image_id = docker_ensure_image(
-                        self.build.docker_client,
-                        service_build.image_id,
-                        service_build.docker_image_name,
-                        service_build.tag,
+                        self.job.docker_client,
+                        service_job.image_id,
+                        service_job.docker_image_name,
+                        service_job.tag,
                         insecure_registry=CONFIG.docker_registry_insecure,
                         handle=handle,
                     )
@@ -251,15 +251,15 @@ class ProvisionStage(BuildStageBase):
                         key: value for key, value in service_config.items()
                         if key in ('command', 'environment')
                     }
-                    container = self.build.docker_client.create_container(
+                    container = self.job.docker_client.create_container(
                         image=image_id,
                         **service_kwargs
                     )
-                    self.build.docker_client.start(container['Id'])
+                    self.job.docker_client.start(container['Id'])
 
                     # Store the provisioning info
                     # pylint:disable=protected-access
-                    self.build._provisioned_containers.append({
+                    self.job._provisioned_containers.append({
                         'project_slug': project_slug,
                         'config': service_config,
                         'id': container['Id']

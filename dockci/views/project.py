@@ -29,22 +29,22 @@ def project_view(slug):
     versioned = 'versioned' in request.args
 
     if versioned:
-        builds = list(project.filtered_builds(passed=True, versioned=True))
+        jobs = list(project.filtered_jobs(passed=True, versioned=True))
     else:
-        builds = project.builds
+        jobs = project.jobs
 
     prev_page_offset = max(page_offset - page_size, 0)
     if page_offset < 1:
         prev_page_offset = None
 
     next_page_offset = page_offset + page_size
-    if next_page_offset > len(builds):
+    if next_page_offset > len(jobs):
         next_page_offset = None
 
-    builds = builds[page_offset:page_offset + page_size]
+    jobs = jobs[page_offset:page_offset + page_size]
     return render_template('project.html',
                            project=project,
-                           builds=builds,
+                           jobs=jobs,
                            versioned=versioned,
                            prev_page_offset=prev_page_offset,
                            next_page_offset=next_page_offset,
