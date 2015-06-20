@@ -1,15 +1,15 @@
 {% extends "_base.html" %}
-{% block title %}Jobs{% endblock %}
+{% block title %}Projects{% endblock %}
 {% block header %}
-    Jobs
+    Projects
     {% if current_user.is_authenticated() %}
         <span class="btn-group pull-right">
-            {{ header_button('content-add', '/jobs/new') }}
+            {{ header_button('content-add', '/projects/new') }}
         </span>
     {% endif %}
 {% endblock %}
 {% block content %}
 <table class="table table-striped">
-    {% for job in jobs %}<tr><td><a href="/jobs/{{ job.slug }}">{{ job.name }}</a></tr></td>{% endfor %}
+    {% for project in projects %}<tr><td><a href="/projects/{{ project.slug }}">{{ project.name }}</a></tr></td>{% endfor %}
 </table>
 {% endblock %}

@@ -7,7 +7,7 @@ import os
 from flask_mail import Message
 
 from dockci.models.build import Build
-from dockci.models.job import Job
+from dockci.models.project import Project
 from dockci.server import APP, MAIL
 from dockci.notifications import HipChat
 
@@ -26,10 +26,10 @@ def send_mail(message):
             )
 
 
-def run_build_async(job_slug, build_slug):
+def run_build_async(project_slug, build_slug):
     """
-    Load and run a build's private run job, forking to handle the build in the
-    background
+    Load and run a build's private run project, forking to handle the build in
+    the background
     """
     if os.fork():
         return  # parent process
@@ -37,8 +37,8 @@ def run_build_async(job_slug, build_slug):
     logger = logging.getLogger('dockci.build')
     try:
         with APP.app_context():
-            job = Job(job_slug)
-            build = Build(job=job, slug=build_slug)
+            project = Project(project_slug)
+            build = Build(project=project, slug=build_slug)
             build_okay = build._run_now()  # pylint:disable=protected-access
 
             # Send the failure message
@@ -56,21 +56,24 @@ def run_build_async(job_slug, build_slug):
                     ))
 
                 if recipients:
+                    subject = (
+                        "DockCI - {project_name} {build_result}ed".format(
+                            project_name=project.name,
+                            build_result=build.result,
+                        )
+                    )
                     email = Message(
                         recipients=recipients,
-                        subject="DockCI - {job_name} {build_result}ed".format(
-                            job_name=job.name,
-                            build_result=build.result,
-                        ),
+                        subject=subject,
                     )
                     send_mail(email)
 
             # Send a HipChat notification
-            if job.hipchat_api_token != '' and job.hipchat_room != '':
-                hipchat = HipChat(apitoken=job.hipchat_api_token,
-                                  room=job.hipchat_room)
+            if project.hipchat_api_token != '' and project.hipchat_room != '':
+                hipchat = HipChat(apitoken=project.hipchat_api_token,
+                                  room=project.hipchat_room)
                 hipchat.message("DockCI - {name} Build {id}: {result}".format(
-                    name=job.name,
+                    name=project.name,
                     id=build.create_ts,
                     result=build.result,
                 ))

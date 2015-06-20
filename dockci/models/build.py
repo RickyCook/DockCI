@@ -36,39 +36,38 @@ from dockci.models.build_meta.stages_prepare import (GitChangesStage,
                                                      TagVersionStage,
                                                      WorkdirStage,
                                                      )
-from dockci.models.job import Job
-# TODO fix and reenable pylint check for cyclic-import
+from dockci.models.project import Project
 from dockci.server import CONFIG, OAUTH_APPS
 from dockci.util import bytes_human_readable, is_docker_id
 
 
 class Build(Model):  # pylint:disable=too-many-instance-attributes
     """
-    An individual job build, and result
+    An individual project build, and result
     """
-    def __init__(self, job=None, slug=None):
+    def __init__(self, project=None, slug=None):
         super(Build, self).__init__()
 
-        assert job is not None, "Job is given"
+        assert project is not None, "Project is given"
 
-        self.job = job
-        self.job_slug = job.slug
+        self.project = project
+        self.project_slug = project.slug
 
         if slug:
             self.slug = slug
 
     slug = OnAccess(lambda _: hex(int(datetime.now().timestamp() * 10000))[2:])
-    job = OnAccess(lambda self: Job(self.job_slug))
-    job_slug = OnAccess(lambda self: self.job.slug)  # TODO infinite loop
+    project = OnAccess(lambda self: Project(self.project_slug))
+    project_slug = OnAccess(lambda self: self.project.slug)  # TODO inf. loop
     ancestor_build = ModelReference(lambda self: Build(
-        self.job,
+        self.project,
         self.ancestor_build_slug
     ), default=lambda _: None)
     create_ts = LoadOnAccess(generate=lambda _: datetime.now())
     start_ts = LoadOnAccess(default=lambda _: None)
     complete_ts = LoadOnAccess(default=lambda _: None)
     result = LoadOnAccess(default=lambda _: None)
-    repo = LoadOnAccess(generate=lambda self: self.job.repo)
+    repo = LoadOnAccess(generate=lambda self: self.project.repo)
     commit = LoadOnAccess(default=lambda _: None)
     tag = LoadOnAccess(default=lambda _: None)
     image_id = LoadOnAccess(default=lambda _: None)
@@ -99,8 +98,8 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         with self.parent_validation(Build):
             errors = []
 
-            if not self.job:
-                errors.append("Parent job not given")
+            if not self.project:
+                errors.append("Parent project not given")
             if self.image_id and not is_docker_id(self.image_id):
                 errors.append("Invalid Docker image ID")
             if self.container_id and not is_docker_id(self.container_id):
@@ -115,14 +114,14 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     def url(self):
         """ URL for this build """
         return url_for('build_view',
-                       job_slug=self.job.slug,
+                       project_slug=self.project.slug,
                        build_slug=self.slug)
 
     @property
     def url_ext(self):
-        """ URL for this job """
+        """ URL for this project """
         return url_for('build_view',
-                       job_slug=self.job.slug,
+                       project_slug=self.project.slug,
                        build_slug=self.slug,
                        _external=True)
 
@@ -130,7 +129,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
     def github_api_status_endpoint(self):
         """ Status endpoint for GitHub API """
         return '%s/commits/%s/statuses' % (
-            self.job.github_api_repo_endpoint,
+            self.project.github_api_repo_endpoint,
             self.commit,
         )
 
@@ -186,7 +185,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         return {
             name: {'size': bytes_human_readable(path.size()),
                    'link': url_for('build_output_view',
-                                   job_slug=self.job_slug,
+                                   project_slug=self.project_slug,
                                    build_slug=self.slug,
                                    filename='%s.tar' % name,
                                    ),
@@ -202,9 +201,9 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         """
         if CONFIG.docker_use_registry:
             return '{host}/{name}'.format(host=CONFIG.docker_registry_host,
-                                          name=self.job_slug)
+                                          name=self.project_slug)
 
-        return self.job_slug
+        return self.project_slug
 
     @property
     def docker_full_name(self):
@@ -226,10 +225,10 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         return self.result == 'success' and self.tag is not None
 
     def data_file_path(self):
-        # Add the job name before the build slug in the path
+        # Add the project name before the build slug in the path
         data_file_path = super(Build, self).data_file_path()
         return data_file_path.join(
-            '..', self.job.slug, data_file_path.basename
+            '..', self.project.slug, data_file_path.basename
         )
 
     def build_output_path(self):
@@ -247,7 +246,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
 
         # TODO fix and reenable pylint check for cyclic-import
         from dockci.workers import run_build_async
-        run_build_async(self.job_slug, self.slug)
+        run_build_async(self.project_slug, self.slug)
 
     def _run_now(self):
         """
@@ -275,7 +274,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
                     self.result = 'error'
                     return False
 
-                if self.job.github_repo_id:
+                if self.project.github_repo_id:
                     ExternalStatusStage(self, 'start').run(0)
 
                 if not all(prepare):
@@ -350,7 +349,7 @@ class Build(Model):  # pylint:disable=too-many-instance-attributes
         if state_msg is not None:
             extra_dict = dict(description="The DockCI build %s" % state_msg)
 
-        token_data = self.job.github_auth_user.oauth_tokens['github']
+        token_data = self.project.github_auth_user.oauth_tokens['github']
         return OAUTH_APPS['github'].post(
             self.github_api_status_endpoint,
             dict(state=state,

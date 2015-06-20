@@ -1,11 +1,11 @@
 {% extends "_base.html" %}
-{% block title %}{{ job.name }}{% endblock %}
+{% block title %}{{ project.name }}{% endblock %}
 {% block header %}
-  {{ job.name }}
+  {{ project.name }}
   {% if current_user.is_authenticated() %}
     <span class="btn-group pull-right">
-      {{ header_button('editor-mode-edit', '/jobs/%s/edit' % job.slug) }}
-      {{ header_button('av-play-circle-outline', '/jobs/%s/builds/new' % job.slug) }}
+      {{ header_button('editor-mode-edit', '/projects/%s/edit' % project.slug) }}
+      {{ header_button('av-play-circle-outline', '/projects/%s/builds/new' % project.slug) }}
     </span>
   {% endif %}
 {% endblock %}
@@ -17,7 +17,7 @@
   <tr><th>Created</th><th>Tag</th><th>Commit ref</th><th>Author</th><th>State</th></tr>
   {% for build in builds -%}
     <tr class="build-detail">
-      <td><a href="/jobs/{{ job.slug }}/builds/{{ build.slug }}">{{ build.create_ts }}</a></td>
+      <td><a href="/projects/{{ project.slug }}/builds/{{ build.slug }}">{{ build.create_ts }}</a></td>
       <td>{{ build.tag if build.tag else '' }}</td>
       <td>{{ build.commit }}</td>
       <td>{{ git_user(build.git_author_name, build.git_author_email) if build.git_author_name or build.git_author_email else ''}}</td>
@@ -27,10 +27,10 @@
 </table>
 {% set versioned_str = '&versioned' if versioned else '' %}
 {% if prev_page_offset is not none -%}
-    <a href="{{ '/jobs/%s?page_offset=%d&page_size=%d%s' % (job.slug, prev_page_offset, page_size, versioned_str) }}" class="pagination btn btn-default btn-lg">Previous</a>
+    <a href="{{ '/projects/%s?page_offset=%d&page_size=%d%s' % (project.slug, prev_page_offset, page_size, versioned_str) }}" class="pagination btn btn-default btn-lg">Previous</a>
 {% endif -%}
 {% if next_page_offset is not none -%}
-    <a href="{{ '/jobs/%s?page_offset=%d&page_size=%d%s' % (job.slug, next_page_offset, page_size, versioned_str) }}" class="pagination btn btn-default btn-lg pull-right">Next</a>
+    <a href="{{ '/projects/%s?page_offset=%d&page_size=%d%s' % (project.slug, next_page_offset, page_size, versioned_str) }}" class="pagination btn btn-default btn-lg pull-right">Next</a>
 {% endif -%}
 <script>
   $(document).ready(function() {

@@ -27,9 +27,9 @@ class ExternalStatusStage(BuildStageBase):
                                   state_msg=None,
                                   context='push'):
         """
-        Update the GitHub status for the job, handling feedback by writing to a
-        log handle. Expected to be run from inside a stage in order to write to
-        the build log
+        Update the GitHub status for the project, handling feedback by writing
+        to a log handle. Expected to be run from inside a stage in order to
+        write to the build log
         """
 
         handle.write("Submitting status to GitHub... ".encode())
@@ -54,7 +54,7 @@ class ExternalStatusStage(BuildStageBase):
 
     def runnable(self, handle):
         success = None
-        if self.build.job.github_repo_id:
+        if self.build.project.github_repo_id:
             success = self._send_github_status_stage(handle)
 
         if success is None:
@@ -89,7 +89,7 @@ class BuildDockerStage(DockerStage):
         if self.build.tag is not None:
             existing_image = None
             for image in self.build.docker_client.images(
-                name=self.build.job_slug,
+                name=self.build.project_slug,
             ):
                 if tag in image['RepoTags']:
                     existing_image = image
@@ -101,7 +101,7 @@ class BuildDockerStage(DockerStage):
                     raise AlreadyBuiltError(
                         'Version %s of %s already built' % (
                             self.build.tag,
-                            self.build.job_slug,
+                            self.build.project_slug,
                         )
                     )
                 # Delete existing builds of _non-versioned_ tagged code
@@ -175,11 +175,11 @@ class TestStage(DockerStage):
                 if isinstance(service_info['config'], dict):
                     service_info['alias'] = service_info['config'].get(
                         'alias',
-                        service_info['job_slug']
+                        service_info['project_slug']
                     )
 
                 else:
-                    service_info['alias'] = service_info['job_slug']
+                    service_info['alias'] = service_info['project_slug']
 
             return (service_info['name'], service_info['alias'])
 

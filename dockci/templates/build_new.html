@@ -1,12 +1,12 @@
 {% extends "_base.html" %}
-{% block title %}{{ build.job.name }} - Queue build{% endblock %}
-{% block header %}{{ build.job.name }} <small>Queue build</small>{% endblock %}
+{% block title %}{{ build.project.name }} - Queue build{% endblock %}
+{% block header %}{{ build.project.name }} <small>Queue build</small>{% endblock %}
 {% block content %}
-<form class="form-horizontal" role="form" action="/jobs/{{ build.job.slug }}/builds/new" method="POST">
+<form class="form-horizontal" role="form" action="/projects/{{ build.project.slug }}/builds/new" method="POST">
   <div class="form-group">
     <label class="col-sm-2 control-label">Git Repository</label>
     <div class="col-sm-10">
-      <p class="form-control-static">{{ build.job.repo }}</p>
+      <p class="form-control-static">{{ build.project.repo }}</p>
     </div>
   </div>
   <div class="form-group">
@@ -19,7 +19,7 @@
     <div class="col-sm-2">&nbsp;</div>
     <div class="col-sm-10">
       <button type="submit" class="btn btn-success">Queue Build</button>
-      <a class="btn btn-default" href="/jobs/{{ build.job.slug }}">Cancel</a>
+      <a class="btn btn-default" href="/projects/{{ build.project.slug }}">Cancel</a>
     </div>
 </form>
 {% endblock %}

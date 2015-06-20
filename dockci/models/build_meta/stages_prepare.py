@@ -8,7 +8,7 @@ import subprocess
 import docker
 import docker.errors
 
-from dockci.models.job import Job
+from dockci.models.project import Project
 from dockci.models.build_meta.config import BuildConfig
 from dockci.models.build_meta.stages import BuildStageBase, CommandBuildStage
 from dockci.server import CONFIG
@@ -98,7 +98,7 @@ class GitInfoStage(BuildStageBase):
                     "%s is %s\n" % (display_name, value)
                 ).encode())
 
-        ancestor_build = self.build.job.latest_build_ancestor(
+        ancestor_build = self.build.project.latest_build_ancestor(
             self.workdir,
             self.build.commit,
         )
@@ -198,31 +198,31 @@ class ProvisionStage(BuildStageBase):
 
     def runnable(self, handle):
         """
-        Resolve jobs and start services
+        Resolve projects and start services
         """
         all_okay = True
         # pylint:disable=no-member
         services = self.build.build_config.services
-        for job_slug, service_config in services.items():
+        for project_slug, service_config in services.items():
             faux_log = FauxDockerLog(handle)
 
-            defaults = {'status': "Finding service %s" % job_slug,
-                        'id': 'docker_provision_%s' % job_slug}
+            defaults = {'status': "Finding service %s" % project_slug,
+                        'id': 'docker_provision_%s' % project_slug}
             with faux_log.more_defaults(**defaults):
                 faux_log.update()
 
-                service_job = Job(job_slug)
-                if not service_job.exists():
-                    faux_log.update(error="No job found")
+                service_project = Project(project_slug)
+                if not service_project.exists():
+                    faux_log.update(error="No project found")
                     all_okay = False
                     continue
 
-                service_build = service_job.latest_build(passed=True,
-                                                         versioned=True)
+                service_build = service_project.latest_build(passed=True,
+                                                             versioned=True)
                 if not service_build:
                     faux_log.update(
                         error="No successful, versioned build for %s" % (
-                            service_job.name
+                            service_project.name
                         ),
                     )
                     all_okay = False
@@ -230,10 +230,10 @@ class ProvisionStage(BuildStageBase):
 
             defaults = {
                 'status': "Starting service %s %s" % (
-                    service_job.name,
+                    service_project.name,
                     service_build.tag,
                 ),
-                'id': 'docker_provision_%s' % job_slug,
+                'id': 'docker_provision_%s' % project_slug,
             }
             with faux_log.more_defaults(**defaults):
                 faux_log.update()
@@ -260,7 +260,7 @@ class ProvisionStage(BuildStageBase):
                     # Store the provisioning info
                     # pylint:disable=protected-access
                     self.build._provisioned_containers.append({
-                        'job_slug': job_slug,
+                        'project_slug': project_slug,
                         'config': service_config,
                         'id': container['Id']
                     })

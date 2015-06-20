@@ -12,6 +12,7 @@
 - Remove DEBIAN_MIRROR override #150
 - Server host tests on config page #151
 - GitHub recieves build status updates #161
+- Rename "job" to "project" #172
 
 ## v0.0.3
 - Log level to debug #20

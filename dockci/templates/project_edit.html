@@ -2,16 +2,16 @@
 
 {% block title -%}
   {% if edit_operation == 'new' %}
-    New Job
+    New Project
   {% else %}
-    {{ job.name }} - {{ edit_operation }}
+    {{ project.name }} - {{ edit_operation }}
   {% endif %}
 {%- endblock %}
 {% block header -%}
   {% if edit_operation == 'new' %}
-    New Job
+    New Project
   {% else %}
-    {{ job.name }} <small>{{ edit_operation }}</small>
+    {{ project.name }} <small>{{ edit_operation }}</small>
   {% endif %}
 {%- endblock %}
 {% block content %}
@@ -26,12 +26,12 @@
 </style>
 <div class="panel panel-default">
   <div class="panel-body">
-    <form class="form-horizontal bs-component" role="form" action="" id="jobForm" method="POST">
-      <input id="inputGithubRepoId" name="github_repo_id" value="{{ job.github_repo_id or '' }}" type="hidden">
+    <form class="form-horizontal bs-component" role="form" action="" id="projectForm" method="POST">
+      <input id="inputGithubRepoId" name="github_repo_id" value="{{ project.github_repo_id or '' }}" type="hidden">
       <div class="form-group">
         <label class="col-sm-2 control-label">Repo type</label>
         <ul id="repoTypeTabs" class="nav nav-tabs col-sm-10">
-          {% if config.model.github_key and config.model.github_secret and (edit_operation == 'new' or job.github_repo_id) %}
+          {% if config.model.github_key and config.model.github_secret and (edit_operation == 'new' or project.github_repo_id) %}
             <li><a id="githubTab" href="#github">GitHub</a></li>
           {% endif %}
           <li id="manualTab" class="active"><a href="#manual">Manual</a></li>
@@ -41,8 +41,8 @@
         <div id="github" class="tab-pane">
           <div class="form-group">
             <label for="inputName" class="col-sm-2 control-label">Settings from</label>
-            {% if job.github_repo_id -%}
-              <p class="col-sm-10 form-control-static">{{ job.github_repo_id }}</p>
+            {% if project.github_repo_id -%}
+              <p class="col-sm-10 form-control-static">{{ project.github_repo_id }}</p>
             {%- else -%}
               <ul id="repo-list" class="col-sm-10 form-control-static" style="list-style: none;"></ul>
             {% endif %}
@@ -52,7 +52,7 @@
           <div class="form-group">
             <label for="inputRepo" class="col-sm-2 control-label">Git Repository</label>
             <div class="col-sm-10">
-              <input required class="form-control" id="inputRepo" name="repo" placeholder="https://your.repo.url" value="{{ job.repo }}">
+              <input required class="form-control" id="inputRepo" name="repo" placeholder="https://your.repo.url" value="{{ project.repo }}">
             </div>
           </div>
         </div>
@@ -61,16 +61,16 @@
         <label for="inputSlug" class="col-sm-2 control-label">Slug</label>
         <div class="col-sm-10">
           {% if edit_operation == 'new' -%}
-            <input required class="form-control" id="inputSlug" name="slug" placeholder="Slug" value="{{ job.slug or '' }}">
+            <input required class="form-control" id="inputSlug" name="slug" placeholder="Slug" value="{{ project.slug or '' }}">
           {%- else -%}
-            <p class="form-control-static">{{ job.slug }}</p>
+            <p class="form-control-static">{{ project.slug }}</p>
           {% endif %}
         </div>
       </div>
       <div class="form-group">
         <label for="inputName" class="col-sm-2 control-label">Name</label>
         <div class="col-sm-10">
-          <input required class="form-control" id="inputName" name="name" placeholder="Name" value="{{ job.name }}">
+          <input required class="form-control" id="inputName" name="name" placeholder="Name" value="{{ project.name }}">
         </div>
       </div>
       <div class="form-group">
@@ -82,13 +82,13 @@
       <div class="form-group">
         <label for="inputHipchatApiToken" class="col-sm-2 control-label">HipChat API Token</label>
         <div class="col-sm-10">
-          <input class="form-control" type="password" id="inputHipchatApiToken" name="hipchat_api_token" value="{{ job.hipchat_api_token }}">
+          <input class="form-control" type="password" id="inputHipchatApiToken" name="hipchat_api_token" value="{{ project.hipchat_api_token }}">
         </div>
       </div>
       <div class="form-group">
         <label for="inputHipchatRoom" class="col-sm-2 control-label">HipChat Room</label>
         <div class="col-sm-10">
-          <input class="form-control" id="inputHipchatRoom" name="hipchat_room" value="{{ job.hipchat_room }}">
+          <input class="form-control" id="inputHipchatRoom" name="hipchat_room" value="{{ project.hipchat_room }}">
         </div>
       </div>
       <div class="form-group">
@@ -98,7 +98,7 @@
           {% if edit_operation == 'new' -%}
             <a class="btn btn-default" href="/">Cancel</a>
           {%- else -%}
-            <a class="btn btn-default" href="/jobs/{{ job.slug }}">Cancel</a>
+            <a class="btn btn-default" href="/projects/{{ project.slug }}">Cancel</a>
           {%- endif %}
         </div>
       </div>
@@ -114,7 +114,7 @@
           githubSecretGroup = inputGithubSecret.parents('.form-group'),
           repoList = $('#repo-list'),
           repoListGroup = repoList.parents('.form-group'),
-          jobForm = $('#jobForm'),
+          projectForm = $('#projectForm'),
           loadGithub = {{ 'true' if edit_operation == 'new' else 'false' }},
           projectsPageSize = 18,
           projectsPage = 1;
@@ -196,7 +196,7 @@
             repoListGroup.removeClass('has-error')
             githubSecretGroup.hide()
 
-            // Don't load github projects unless new job
+            // Don't load github projects unless new project
             if (loadGithub) {
               repoList.empty()
               repoList.append($('<li class="col-sm-12 loading">Loading... Just a sec!</li>'))
@@ -206,7 +206,7 @@
             githubSecretGroup.show()
           }
 
-          jobForm.attr('href', '?repo_type=' + el.hash.substr(1))
+          projectForm.attr('href', '?repo_type=' + el.hash.substr(1))
 
           $(el).tab('show');
         })
