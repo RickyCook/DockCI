@@ -271,14 +271,14 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
                     lambda: BuildStage(self, workdir).run(0),
                 ))
                 if not all(git_info):
-                    self.result = 'error'
+                    self.result = 'broken'
                     return False
 
                 if self.project.github_repo_id:
                     ExternalStatusStage(self, 'start').run(0)
 
                 if not all(prepare):
-                    self.result = 'error'
+                    self.result = 'broken'
                     return False
 
                 if not TestStage(self).run(0):
@@ -288,7 +288,7 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
                 # We should fail the job here because if this is a tagged
                 # job, we can't rebuild it
                 if not PushStage(self).run(0):
-                    self.result = 'error'
+                    self.result = 'broken'
                     return False
 
                 self.result = 'success'
@@ -300,7 +300,7 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
 
             return True
         except Exception:  # pylint:disable=broad-except
-            self.result = 'error'
+            self.result = 'broken'
             self._error_stage('error')
 
             return False
@@ -330,10 +330,10 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
                 state = 'success'
             elif self.state == 'fail':
                 state = 'failure'
-            elif self.state == 'error':
-                state = 'error'
+            elif self.state == 'broken':
+                state = 'broken'
             else:
-                state = 'error'
+                state = 'broken'
                 state_msg = "is in an unknown state: '%s'" % state
 
         if state_msg is None:
@@ -343,7 +343,7 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
                 state_msg = "completed successfully"
             elif state == 'fail':
                 state_msg = "completed with failing tests"
-            elif state == 'error':
+            elif state == 'broken':
                 state_msg = "failed to complete due to an error"
 
         if state_msg is not None:

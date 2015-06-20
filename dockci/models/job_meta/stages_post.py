@@ -119,7 +119,7 @@ class CleanupStage(JobStageBase):
                     )
 
         # Only clean up image if this is an non-tagged job
-        if self.job.tag is None or self.job.result in ('error', 'fail'):
+        if self.job.tag is None or self.job.result in ('broken', 'fail'):
             if self.job.image_id:
                 with cleanup_context('image', self.job.image_id):
                     self.job.docker_client.remove_image(self.job.image_id)

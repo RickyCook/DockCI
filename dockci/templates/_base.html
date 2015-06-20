@@ -7,7 +7,7 @@
 {% macro job_state_glyph(state) -%}
   <i class="{%- if state == 'success' -%}mdi-action-thumb-up mdi-success
             {%- elif state == 'fail' -%}mdi-action-thumb-down mdi-warning
-            {%- elif state == 'error' -%}mdi-alert-warning mdi-danger
+            {%- elif state == 'broken' -%}mdi-alert-warning mdi-danger
             {%- elif state == 'running' -%}mdi-av-play-arrow mdi-info
             {%- elif state == 'queued' -%}mdi-av-timer mdi-material-grey
             {%- else -%}mdi-action-help mdi-info
