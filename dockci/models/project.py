@@ -41,6 +41,22 @@ class Project(Model):  # pylint:disable=too-few-public-methods
         super(Project, self).__init__()
         self.slug = slug
 
+    def delete(self):
+        """
+        Delete the project, including GitHub hooks, and related job data
+
+        Notes:
+          If there's an error deleting GitHub hook, it's ignored
+        """
+        from dockci.models.job import Job
+
+        try:
+            Job.delete_all_in_project(self)
+        except py.error.ENOENT:
+            pass
+
+        return super(Project, self).delete()
+
     def _all_jobs(self, reverse_=True):
         """
         Get all the jobs associated with this project

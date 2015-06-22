@@ -244,11 +244,21 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
         """
         return self.result == 'success' and self.tag is not None
 
+    @classmethod
+    def delete_all_in_project(cls, project):
+        """ Delete all jobs and data for the given project """
+        cls.data_dir_path_for_project(project).remove(rec=True)
+
+    @classmethod
+    def data_dir_path_for_project(cls, project):
+        """ Get the path that jobs reside in for the given project """
+        return cls.data_dir_path().join(project.slug)
+
     def data_file_path(self):
         # Add the project name before the job slug in the path
         data_file_path = super(Job, self).data_file_path()
-        return data_file_path.join(
-            '..', self.project.slug, data_file_path.basename
+        return self.data_dir_path_for_project(self.project).join(
+            data_file_path.basename
         )
 
     def job_output_path(self):
