@@ -4,12 +4,18 @@ Views related to project management
 
 import re
 
-from flask import abort, flash, redirect, render_template, request
+from flask import abort, flash, redirect, render_template, request, url_for
 from flask_security import current_user, login_required
 
 from dockci.models.project import Project
-from dockci.server import APP
-from dockci.util import model_flash, request_fill
+from dockci.server import APP, CONFIG
+from dockci.util import (auth_token_data,
+                         auth_token_expiry,
+                         create_auth_token,
+                         model_flash,
+                         request_fill,
+                         validate_auth_token,
+                         )
 
 
 @APP.route('/projects/<slug>', methods=('GET', 'POST'))
@@ -21,34 +27,62 @@ def project_view(slug):
     if not project.exists():
         abort(404)
 
-    request_fill(project, ('name', 'repo', 'github_secret',
-                           'hipchat_api_token', 'hipchat_room'))
+    if request.method == 'POST':
+        if request.form.get('operation', None) == 'delete':
+            auth_token_okay = validate_auth_token(
+                CONFIG.secret, request.form, current_user, project,
+            )
+            if auth_token_okay:
+                project.delete()
+                if project.exists():
+                    flash("Unexpected issue deleting '%s'" % project.slug,
+                          'danger')
+                    return redirect(url_for('project_view', slug=project.slug))
+                else:
+                    flash("Deleted '%s'" % project.slug, 'success')
+                    return redirect('/')
+            else:
+                flash("Authentication token mismatch", 'danger')
+                return redirect(url_for('project_view', slug=project.slug))
 
-    page_size = int(request.args.get('page_size', 20))
-    page_offset = int(request.args.get('page_offset', 0))
-    versioned = 'versioned' in request.args
-
-    if versioned:
-        jobs = list(project.filtered_jobs(passed=True, versioned=True))
     else:
-        jobs = project.jobs
+        page_size = int(request.args.get('page_size', 20))
+        page_offset = int(request.args.get('page_offset', 0))
+        versioned = 'versioned' in request.args
 
-    prev_page_offset = max(page_offset - page_size, 0)
-    if page_offset < 1:
-        prev_page_offset = None
+        if versioned:
+            jobs = list(project.filtered_jobs(passed=True, versioned=True))
+        else:
+            jobs = project.jobs
 
-    next_page_offset = page_offset + page_size
-    if next_page_offset > len(jobs):
-        next_page_offset = None
+        prev_page_offset = max(page_offset - page_size, 0)
+        if page_offset < 1:
+            prev_page_offset = None
 
-    jobs = jobs[page_offset:page_offset + page_size]
-    return render_template('project.html',
-                           project=project,
-                           jobs=jobs,
-                           versioned=versioned,
-                           prev_page_offset=prev_page_offset,
-                           next_page_offset=next_page_offset,
-                           page_size=page_size)
+        next_page_offset = page_offset + page_size
+        if next_page_offset > len(jobs):
+            next_page_offset = None
+
+        auth_token_expires = auth_token_expiry()
+        auth_token_delete = {
+            'auth_token': create_auth_token(
+                CONFIG.secret, auth_token_data(
+                    current_user, project, 'delete', auth_token_expires
+                ),
+            ),
+            'expiry': auth_token_expires,
+        }
+
+        jobs = jobs[page_offset:page_offset + page_size]
+        return render_template('project.html',
+                               project=project,
+                               jobs=jobs,
+                               versioned=versioned,
+                               prev_page_offset=prev_page_offset,
+                               next_page_offset=next_page_offset,
+                               page_size=page_size,
+                               auth_token_delete=auth_token_delete,
+                               )
 
 
 @APP.route('/projects/<slug>/edit', methods=('GET', 'POST'))

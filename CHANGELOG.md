@@ -15,6 +15,10 @@
 - Rename "job" to "project" #172
 - Rename "build" to "job" #173
 - Rename "error" build state to "broken" #174
+- Destructive operation confirmation template #178
+- HMAC signed operations with expiry, user, model, allowed action #178
+- Delete projects (along with associated jobs, and GitHub hooks) #178
+- Sessions secret hidden on config edit form #178
 
 ## v0.0.3
 - Log level to debug #20

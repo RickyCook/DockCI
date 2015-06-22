@@ -4,6 +4,7 @@
   {{ project.name }}
   {% if current_user.is_authenticated() %}
     <span class="btn-group pull-right">
+      {{ header_button('action-delete', '#', 'btn-danger btn-flat', 'data-toggle="modal" data-target="#delete-dialog"') }}
       {{ header_button('editor-mode-edit', '/projects/%s/edit' % project.slug) }}
       {{ header_button('av-play-circle-outline', '/projects/%s/jobs/new' % project.slug) }}
     </span>
@@ -13,6 +14,30 @@
 <div class="checkbox"><label>
   <input id="filterStable" type="checkbox" {{ 'checked' if versioned else '' }}>Only stable releases
 </label></div>
+<div id="delete-dialog" class="modal fade" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h4 class="modal-title">Really delete {{ project.name }}?</h4>
+      </div>
+      <div class="modal-body">
+        <p>This will delete all job logs, artifacts, and GitHub hooks but not
+           any Docker images or containers.</p>
+      </div>
+      <div class="modal-footer">
+        <form action="{{ url_for('project_view', slug=project.slug) }}" method="POST">
+          <input type="hidden" name="operation" value="delete" />
+          <input type="hidden" name="auth_token" value="{{ auth_token_delete.auth_token }}" />
+          <input type="hidden" name="expiry" value="{{ auth_token_delete.expiry }}" />
+
+          <button class="btn" data-dismiss="modal">Cancel</button>
+          <input type="submit" class="btn btn-danger" value="Delete" />
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 <table id="jobs-list" class="table table-striped">
   <tr><th>Created</th><th>Tag</th><th>Commit ref</th><th>Author</th><th>State</th></tr>
   {% for job in jobs -%}

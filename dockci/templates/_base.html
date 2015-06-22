@@ -1,6 +1,6 @@
 <!doctype html>
-{% macro header_button(img, link, classes='') -%}
-  <a class="btn btn-default btn-lg {{ classes }}" href="{{ link }}">
+{% macro header_button(img, link, classes='btn-default', attrs='') -%}
+  <a class="btn btn-lg {{ classes }}" href="{{ link }}" {{ attrs | safe }}>
     <i class="mdi-{{ img }}"></i>
   </a>
 {%- endmacro %}
@@ -32,7 +32,9 @@
   <script src="/static/lib/js/URI.min.js"></script>
   <script src="/static/lib/js/jquery.URI.min.js"></script>
   <script src="/static/lib/js/dropdown.js"></script>
+  <script src="/static/lib/js/modal.js"></script>
   <script src="/static/lib/js/tab.js"></script>
+  <script src="/static/lib/js/transition.js"></script>
   <script src="/static/lib/js/ansi_up.js"></script>
   <script src="/static/lib/js/md5.min.js"></script>
   <script src="/static/lib/js/material.min.js"></script>

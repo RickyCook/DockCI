@@ -28,4 +28,4 @@ requests==2.5.1
 six==1.9.0
 Werkzeug==0.9.6
 WTForms==2.0.2
-yaml-model==0.1.4
+yaml-model==0.1.5

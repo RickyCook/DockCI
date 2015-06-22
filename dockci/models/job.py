@@ -44,6 +44,10 @@ from dockci.util import bytes_human_readable, is_docker_id
 class Job(Model):  # pylint:disable=too-many-instance-attributes
     """
     An individual project job, and result
+
+    Notes:
+      Things like indexing, and other "advanced" features of yaml_model will
+      not work here due to the hacky way we have implemented composite keys
     """
     def __init__(self, project=None, slug=None):
         super(Job, self).__init__()
@@ -109,6 +113,20 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
                 raise ValidationError(errors)
 
         return True
+
+    @property
+    def compound_slug(self):
+        """
+        A slug that includes all identifiers necessary for this model to be
+        unique in the data set
+        """
+        return '%s/%s' % (self.project.slug, self.slug)
+
+    @classmethod
+    def from_compound_slug(cls, compound_slug):
+        """ Create a job object from a compound slug """
+        project_slug, job_slug = compound_slug.split('/')
+        return cls(Project(project_slug), job_slug)
 
     @property
     def url(self):
@@ -224,11 +242,21 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
         """
         return self.result == 'success' and self.tag is not None
 
+    @classmethod
+    def delete_all_in_project(cls, project):
+        """ Delete all jobs and data for the given project """
+        cls.data_dir_path_for_project(project).remove(rec=True)
+
+    @classmethod
+    def data_dir_path_for_project(cls, project):
+        """ Get the path that jobs reside in for the given project """
+        return cls.data_dir_path().join(project.slug)
+
     def data_file_path(self):
         # Add the project name before the job slug in the path
         data_file_path = super(Job, self).data_file_path()
-        return data_file_path.join(
-            '..', self.project.slug, data_file_path.basename
+        return self.data_dir_path_for_project(self.project).join(
+            data_file_path.basename
         )
 
     def job_output_path(self):
