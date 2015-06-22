@@ -44,6 +44,10 @@ from dockci.util import bytes_human_readable, is_docker_id
 class Job(Model):  # pylint:disable=too-many-instance-attributes
     """
     An individual project job, and result
+
+    Notes:
+      Things like indexing, and other "advanced" features of yaml_model will
+      not work here due to the hacky way we have implemented composite keys
     """
     def __init__(self, project=None, slug=None):
         super(Job, self).__init__()
