@@ -12,7 +12,7 @@ import subprocess
 import json
 import datetime
 
-from base64 import b64decode, b64encode
+from base64 import b64encode
 from contextlib import contextmanager
 from functools import wraps
 from ipaddress import ip_address

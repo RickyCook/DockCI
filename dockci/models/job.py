@@ -122,13 +122,11 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
         """
         return '%s/%s' % (self.project.slug, self.slug)
 
-
     @classmethod
     def from_compound_slug(cls, compound_slug):
         """ Create a job object from a compound slug """
         project_slug, job_slug = compound_slug.split('/')
         return cls(Project(project_slug), job_slug)
-
 
     @property
     def url(self):

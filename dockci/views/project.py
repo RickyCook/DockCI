@@ -2,7 +2,6 @@
 Views related to project management
 """
 
-import hmac
 import re
 
 from flask import abort, flash, redirect, render_template, request, url_for
