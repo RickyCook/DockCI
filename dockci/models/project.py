@@ -2,6 +2,8 @@
 DockCI - CI, but with that all important Docker twist
 """
 
+import logging
+
 from uuid import uuid4
 
 import py.error  # pylint:disable=import-error
@@ -49,6 +51,19 @@ class Project(Model):  # pylint:disable=too-few-public-methods
           If there's an error deleting GitHub hook, it's ignored
         """
         from dockci.models.job import Job
+
+        try:
+            result = self.delete_github_webhook(save=False)
+        except ValueError:
+            pass
+        else:
+            # TODO flash to the user
+            logging.error(result.data.get(
+                'message',
+                "Unexpected response from GitHub. HTTP status %d" % (
+                    result.status,
+                )
+            ))
 
         try:
             Job.delete_all_in_project(self)
@@ -168,6 +183,21 @@ class Project(Model):  # pylint:disable=too-few-public-methods
                 pass
 
             self.save()
+
+        return result
+
+    def delete_github_webhook(self, save=True):
+        """ Utility to delete the associated GitHub web hook """
+        result = OAUTH_APPS['github'].delete(
+            self.github_api_hook_endpoint,
+            format='json',
+        )
+
+        if result.status == 204:
+            self.github_hook_id = None
+
+            if save:
+                self.save()
 
         return result
 

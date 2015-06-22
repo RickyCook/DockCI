@@ -17,7 +17,7 @@
 - Rename "error" build state to "broken" #174
 - Destructive operation confirmation template
 - HMAC signed operations with expiry, user, model, allowed action
-- Delete projects
+- Delete projects (along with associated jobs, and GitHub hooks)
 - Sessions secret hidden on config edit form
 
 ## v0.0.3

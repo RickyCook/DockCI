@@ -22,8 +22,8 @@
         <h4 class="modal-title">Really delete {{ project.name }}?</h4>
       </div>
       <div class="modal-body">
-        <p>This will delete all job logs, and artifacts but not any Docker
-           images or containers.</p>
+        <p>This will delete all job logs, artifacts, and GitHub hooks but not
+           any Docker images or containers.</p>
       </div>
       <div class="modal-footer">
         <form action="{{ url_for('project_view', slug=project.slug) }}" method="POST">
