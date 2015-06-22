@@ -129,8 +129,16 @@ def job_output_view(project_slug, job_slug, filename):
     project = Project(slug=project_slug)
     job = Job(project=project, slug=job_slug)
 
-    # TODO possible security issue opending files from user input like this
-    data_file_path = job.job_output_path().join(filename)
+    job_output_path = job.job_output_path()
+    data_file_path = job_output_path.join(filename)
+
+     # Ensure no security issues opening path above our output dir
+    file_in_path = job_output_path.samefile(
+        data_file_path.common(job_output_path)
+    )
+    if not file_in_path:
+        abort(404)
+
     if not data_file_path.check(file=True):
         abort(404)
 
