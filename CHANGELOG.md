@@ -15,6 +15,9 @@
 - Rename "job" to "project" #172
 - Rename "build" to "job" #173
 - Rename "error" build state to "broken" #174
+- Destructive operation confirmation template
+- HMAC signed operations with expiry, user, model, allowed action
+- Delete projects
 
 ## v0.0.3
 - Log level to debug #20

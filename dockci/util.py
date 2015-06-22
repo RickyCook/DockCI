@@ -4,6 +4,7 @@ Generic DockCI utils
 import hashlib
 import hmac
 import logging
+import pickle
 import re
 import socket
 import struct
@@ -11,7 +12,9 @@ import subprocess
 import json
 import datetime
 
+from base64 import b64decode, b64encode
 from contextlib import contextmanager
+from datetime import datetime
 from functools import wraps
 from ipaddress import ip_address
 
@@ -20,6 +23,9 @@ import docker.errors
 from flask import flash, request
 from flask_security import current_user, login_required
 from yaml_model import ValidationError
+
+
+AUTH_TOKEN_EXPIRY = 36000  # 10 hours
 
 
 def is_yaml_file(filename):
@@ -353,3 +359,78 @@ def guess_multi_value(value):
         return [line.strip() for line in value.split('\n')]
 
     return [value]
+
+
+def fq_object_class_name(obj):
+    """ Fully qualified name for an object's class """
+    return '%s.%s' % (obj.__class__.__module__,
+                      obj.__class__.__name__)
+
+
+def full_model_slug(model):
+    """ Get a compound slug if possible, otherwise just the slug is fine """
+    if hasattr(model, 'compound_slug'):
+        return model.compound_slug
+
+    return model.slug
+
+
+def auth_token_data_from_form(form_data, user, model):
+    """
+    Give the data dict necessary for an auth token, filling values from the
+    form where possible
+    """
+    return {
+        'user_slug': user.slug,
+        'model_class': fq_object_class_name(model),
+        'model_slug': full_model_slug(model),
+        'operation': form_data.get('operation', None),
+        'expiry': int(form_data['expiry']),  # Should be checked previously
+    }
+
+
+def auth_token_data(user, model, operation, expiry):
+    """ Give the data dict necessary for an auth token """
+    return {
+        'user_slug': user.slug,
+        'model_class': fq_object_class_name(model),
+        'model_slug': full_model_slug(model),
+        'operation': operation,
+        'expiry': expiry,
+    }
+
+
+def auth_token_expiry():
+    """ Expiry date for a new auth token """
+    return int(datetime.now().timestamp()) + AUTH_TOKEN_EXPIRY
+
+
+def create_auth_token(secret, token_data):
+    """
+    Create an auth token for a user to do a destructive operation on a model
+    """
+    # TODO HMAC default here is MD5. This needs to NOT be MD5
+    return b64encode(hmac.new(
+        secret.encode(),
+        pickle.dumps(token_data),
+        'sha256',
+    ).digest()).decode()
+
+
+def validate_auth_token(secret, form_data, user, model):
+    """ Validate that auth token data in the form is valid """
+    try:
+        expiry = int(form_data.get('expiry', ''))
+    except ValueError:
+        return False  # TODO better logging
+
+    now = int(datetime.now().timestamp())
+    if expiry < now:
+        return False
+
+    req_auth_token = create_auth_token(
+        secret, auth_token_data_from_form(form_data, user, model),
+    )
+
+    return hmac.compare_digest(req_auth_token,
+                               form_data.get('auth_token', None))
