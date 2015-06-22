@@ -129,10 +129,10 @@
             .append(
               $('<i></i>').addClass('loading mdi-device-data-usage spin pull-right')
             )
+            .click(function(ev) {
+              $(ev.currentTarget).parent().toggleClass('panel-contracted');
+            })
         )
-        .click(function(ev) {
-          $(ev.currentTarget).toggleClass('panel-contracted');
-        })
         .append(
           $('<pre></pre>').addClass('panel-body stage-log')
         );

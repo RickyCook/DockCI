@@ -19,6 +19,7 @@
 - HMAC signed operations with expiry, user, model, allowed action #178
 - Delete projects (along with associated jobs, and GitHub hooks) #178
 - Sessions secret hidden on config edit form #178
+- Don't roll up log when body element is clicked #179
 
 ## v0.0.3
 - Log level to debug #20
