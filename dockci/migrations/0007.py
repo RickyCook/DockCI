@@ -27,7 +27,9 @@ for project_path in jobs_path.listdir():
                 build_config_data['job_output'] = \
                     build_config_data.pop('build_output')
                 with build_config_file.open('w') as handle:
-                    yaml.dump(build_config_data, handle, default_flow_style=False)
+                    yaml.dump(build_config_data,
+                              handle,
+                              default_flow_style=False)
 
         except py.error.ENOENT:
             pass

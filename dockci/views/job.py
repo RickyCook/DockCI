@@ -132,7 +132,7 @@ def job_output_view(project_slug, job_slug, filename):
     job_output_path = job.job_output_path()
     data_file_path = job_output_path.join(filename)
 
-     # Ensure no security issues opening path above our output dir
+    # Ensure no security issues opening path above our output dir
     file_in_path = job_output_path.samefile(
         data_file_path.common(job_output_path)
     )
