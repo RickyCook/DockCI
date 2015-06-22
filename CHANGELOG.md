@@ -18,6 +18,7 @@
 - Destructive operation confirmation template
 - HMAC signed operations with expiry, user, model, allowed action
 - Delete projects
+- Sessions secret hidden on config edit form
 
 ## v0.0.3
 - Log level to debug #20
