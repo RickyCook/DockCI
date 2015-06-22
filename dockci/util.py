@@ -14,7 +14,6 @@ import datetime
 
 from base64 import b64decode, b64encode
 from contextlib import contextmanager
-from datetime import datetime
 from functools import wraps
 from ipaddress import ip_address
 
@@ -402,7 +401,7 @@ def auth_token_data(user, model, operation, expiry):
 
 def auth_token_expiry():
     """ Expiry date for a new auth token """
-    return int(datetime.now().timestamp()) + AUTH_TOKEN_EXPIRY
+    return int(datetime.datetime.now().timestamp()) + AUTH_TOKEN_EXPIRY
 
 
 def create_auth_token(secret, token_data):
@@ -424,7 +423,7 @@ def validate_auth_token(secret, form_data, user, model):
     except ValueError:
         return False  # TODO better logging
 
-    now = int(datetime.now().timestamp())
+    now = int(datetime.datetime.now().timestamp())
     if expiry < now:
         return False
 
