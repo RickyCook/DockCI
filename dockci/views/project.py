@@ -146,13 +146,28 @@ def project_input_view(project, edit_operation, fields):
             fill_data['github_repo_id'] = None
             fields.append('github_repo_id')
 
+        save = request.args.get('repo_type', None) != 'github'
+        save &= edit_operation != 'new'
+
         saved = request_fill(
             project, fields,
             data=fill_data,
-            save=request.args.get('repo_type', None) != 'github',
+            save=save,
         )
 
-        if request.args.get('repo_type', None) == 'github':
+        if edit_operation == 'new':
+            if project.exists():
+                flash("Project with slug '%s' already exists" % project.slug,
+                      'danger')
+                saved = False
+
+            elif request.args.get('repo_type', None) == 'github':
+                saved = handle_github_hook(project)
+
+            else:
+                project.save()
+
+        elif request.args.get('repo_type', None) == 'github':
             saved = handle_github_hook(project)
 
         if saved:
