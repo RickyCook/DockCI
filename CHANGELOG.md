@@ -21,6 +21,7 @@
 - Sessions secret hidden on config edit form #178
 - Don't roll up log when body element is clicked #179
 - Better security for dowload of job output files #180
+- Can't add a project that already exists #184
 
 ## v0.0.3
 - Log level to debug #20

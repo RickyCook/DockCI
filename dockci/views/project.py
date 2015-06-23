@@ -135,30 +135,7 @@ def handle_github_hook(project):
 def project_input_view(project, edit_operation, fields):
     """ Generic view for project editing """
     if request.method == 'POST':
-        fill_data = request.form.to_dict()
-
-        # Filter out github properties if not a github repo, so that they are
-        # unset on the project
-        if request.args.get('repo_type', None) == 'github':
-            fill_data['github_auth_user'] = current_user
-            fields.append('github_auth_user')
-        else:
-            fill_data['github_repo_id'] = None
-            fields.append('github_repo_id')
-
-        saved = request_fill(
-            project, fields,
-            data=fill_data,
-            save=request.args.get('repo_type', None) != 'github',
-        )
-
-        if request.args.get('repo_type', None) == 'github':
-            saved = handle_github_hook(project)
-
-        if saved:
-            return redirect(
-                '/projects/{project_slug}'.format(project_slug=project.slug)
-            )
+        project_input_view_post(project, edit_operation, fields)
 
     if 'repo_type' in request.args:
         default_repo_type = request.args['repo_type']
@@ -179,3 +156,46 @@ def project_input_view(project, edit_operation, fields):
                            edit_operation=edit_operation,
                            default_repo_type=default_repo_type,
                            )
+
+
+def project_input_view_post(project, edit_operation, fields):
+    """ Handle the form filling for ``project_input_view `` """
+    fill_data = request.form.to_dict()
+
+    # Filter out github properties if not a github repo, so that they are
+    # unset on the project
+    if request.args.get('repo_type', None) == 'github':
+        fill_data['github_auth_user'] = current_user
+        fields.append('github_auth_user')
+    else:
+        fill_data['github_repo_id'] = None
+        fields.append('github_repo_id')
+
+    save = request.args.get('repo_type', None) != 'github'
+    save &= edit_operation != 'new'
+
+    saved = request_fill(
+        project, fields,
+        data=fill_data,
+        save=save,
+    )
+
+    if edit_operation == 'new':
+        if project.exists():
+            flash("Project with slug '%s' already exists" % project.slug,
+                  'danger')
+            saved = False
+
+        elif request.args.get('repo_type', None) == 'github':
+            saved = handle_github_hook(project)
+
+        else:
+            project.save()
+
+    elif request.args.get('repo_type', None) == 'github':
+        saved = handle_github_hook(project)
+
+    if saved:
+        return redirect(
+            '/projects/{project_slug}'.format(project_slug=project.slug)
+        )
