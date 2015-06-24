@@ -63,8 +63,24 @@ def project_view(slug):
         if next_page_offset > len(jobs):
             next_page_offset = None
 
+        jobs = jobs[page_offset:page_offset + page_size]
+        return render_template(
+            'project.html',
+            project=project,
+            jobs=jobs,
+            versioned=versioned,
+            prev_page_offset=prev_page_offset,
+            next_page_offset=next_page_offset,
+            page_size=page_size,
+            auth_token_delete=get_auth_token_delete(project),
+        )
+
+
+def get_auth_token_delete(project):
+    """ Get an auth token to delete the project for the current user """
+    if current_user.is_authenticated():
         auth_token_expires = auth_token_expiry()
-        auth_token_delete = {
+        return {
             'auth_token': create_auth_token(
                 CONFIG.secret, auth_token_data(
                     current_user, project, 'delete', auth_token_expires
@@ -73,16 +89,7 @@ def project_view(slug):
             'expiry': auth_token_expires,
         }
 
-        jobs = jobs[page_offset:page_offset + page_size]
-        return render_template('project.html',
-                               project=project,
-                               jobs=jobs,
-                               versioned=versioned,
-                               prev_page_offset=prev_page_offset,
-                               next_page_offset=next_page_offset,
-                               page_size=page_size,
-                               auth_token_delete=auth_token_delete,
-                               )
+    return None
 
 
 @APP.route('/projects/<slug>/edit', methods=('GET', 'POST'))
