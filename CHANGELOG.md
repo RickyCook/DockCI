@@ -1,5 +1,8 @@
 # Changelog
 
+### v0.0.4-1
+- Fix issue browsing anonymously #187
+
 ## v0.0.4
 - Upgrade YAML model #146
 - Fix email #147
