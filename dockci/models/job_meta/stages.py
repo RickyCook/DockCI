@@ -5,7 +5,7 @@ Stages in a Job
 import logging
 import subprocess
 
-from requests.exceptions import ConnectionError
+import requests.exceptions
 
 from dockci.exceptions import AlreadyRunError, DockerUnreachableError
 
@@ -172,7 +172,7 @@ class DockerStage(JobStageBase):
         """
         try:
             output = self.runnable_docker()
-        except ConnectionError as ex:
+        except requests.exceptions.ConnectionError as ex:
             raise DockerUnreachableError(self.job.docker_client, ex)
 
         if not output:

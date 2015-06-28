@@ -2,7 +2,8 @@
 DockCI exceptions
 """
 
-from requests.exceptions import ConnectionError
+import requests.exceptions
+
 from requests.packages.urllib3.exceptions import ProtocolError
 
 
@@ -43,6 +44,7 @@ class AlreadyRunError(InvalidOperationError):
 class DockerUnreachableError(Exception, HumanOutputException):
     """ Raised when Docker is unreachable for some reason """
     def __init__(self, client, exception, message=None):
+        super(DockerUnreachableError, self).__init__()
         self.client = client
         self.exception = exception
         self.message = message
@@ -69,7 +71,7 @@ class DockerUnreachableError(Exception, HumanOutputException):
         if exception is None:
             raise ValueError("No exception given")
 
-        if isinstance(exception, ConnectionError):
+        if isinstance(exception, requests.exceptions.ConnectionError):
             return self.root_exception(exception.args[0])
         if isinstance(exception, ProtocolError):
             return self.root_exception(exception.args[1])
