@@ -3,6 +3,7 @@ DockCI - CI, but with that all important Docker twist
 """
 
 import logging
+import re
 
 from uuid import uuid4
 
@@ -19,6 +20,9 @@ from yaml_model import (LoadOnAccess,
 from dockci.models.auth import User
 from dockci.server import OAUTH_APPS
 from dockci.util import is_yaml_file, is_git_ancestor
+
+
+DOCKER_REPO_RE = re.compile(r'[a-z0-9-_.]+')
 
 
 def all_projects():
@@ -143,6 +147,9 @@ class Project(Model):  # pylint:disable=too-few-public-methods
         with self.parent_validation(Project):
             errors = []
 
+            if not DOCKER_REPO_RE.match(self.slug):
+                errors.append("Invalid slug. Must only contain lower case, "
+                              "0-9, and the characters '-', '_' and '.'")
             if not self.repo:
                 errors.append("Repository can not be blank")
             if not self.name:
