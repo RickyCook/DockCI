@@ -37,7 +37,7 @@ styletest:  # don't install deps
 	python_env/bin/pep8 dockci
 	python_env/bin/pylint --rcfile pylint.conf dockci
 unittest:
-	python_env/bin/pytest -vv -t test
+	python_env/bin/py.test -vv test
 test: testdeps styletest unittest
 
 # Container commands
