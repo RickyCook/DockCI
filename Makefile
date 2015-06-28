@@ -29,12 +29,16 @@ htmldeps:
 pythondeps:
 	python3.4 -m virtualenv -p $(shell which python3.4) python_env
 	python_env/bin/pip install -r requirements.txt
+testdeps:
+	python_env/bin/pip install -r test-requirements.txt
 deps: htmldeps pythondeps collectstatic
 
 styletest:  # don't install deps
 	python_env/bin/pep8 dockci
 	python_env/bin/pylint --rcfile pylint.conf dockci
-test: styletest
+unittest:
+	python_env/bin/pytest -vv -t test
+test: styletest unittest
 
 # Container commands
 ci: test
@@ -45,4 +49,4 @@ run: migrate
 sh:
 	@sh
 
-.PHONY: ci collectstatic htmldeps pythondeps deps run styletest test
+.PHONY: ci collectstatic htmldeps pythondeps testdeps deps run styletest test

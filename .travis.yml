@@ -5,6 +5,7 @@ python:
 install:
   - pip3 install virtualenv
   - make deps
+  - make testdeps
 script: make test
 notifications:
   webhooks:
