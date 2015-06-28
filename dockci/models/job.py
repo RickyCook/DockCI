@@ -3,6 +3,7 @@ DockCI - CI, but with that all important Docker twist
 """
 
 import random
+import sys
 import tempfile
 
 from datetime import datetime
@@ -392,16 +393,29 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
         """
         Create an error stage and add stack trace for it
         """
+        # TODO all this should be in the try/except
         self.job_stage_slugs.append(stage_slug)  # pylint:disable=no-member
         self.save()
 
-        import traceback
+        message = None
+        try:
+            _, ex, _ = sys.exc_info()
+            if ex.human_str:
+                message = str(ex)
+
+        except AttributeError:
+            pass
+
+        if message is None:
+            import traceback
+            message = traceback.format_exc()
+
         try:
             JobStage(
                 self,
                 stage_slug,
                 lambda handle: handle.write(
-                    bytes(traceback.format_exc(), 'utf8')
+                    message.encode()
                 )
             ).run()
         except Exception:  # pylint:disable=broad-except

@@ -1,3 +1,4 @@
+import docker
 import pytest
 
 from requests.exceptions import ConnectionError
@@ -42,15 +43,37 @@ class TestDockerUnreachableError(object):
         ex_info = pytest.raises(ValueError, test_ex.root_exception)
 
     @pytest.mark.parametrize('args,expected', [
-        ((None, None, 'testing'), 'testing'),
-        ((None, ValueError('different'), 'testing'), 'testing'),
-        ((None, CONN_REFUSED), '[Errno 61] Connection refused'),
-        ((None, ValueError('testing')), 'testing'),
         (
-            (None, ConnectionError(ProtocolError(
-                'Connection aborted.', CONN_REFUSED,
-            ))),
-            '[Errno 61] Connection refused',
+            (docker.Client('http://localhost:2375'), None, 'testing'),
+            "Error with the Docker server 'http://localhost:2375': testing",
+        ),
+        (
+            (
+                docker.Client('http://localhost:2375'),
+                ValueError('different'),
+                'testing',
+            ),
+            "Error with the Docker server 'http://localhost:2375': testing",
+        ),
+        (
+            (docker.Client('http://localhost:2375'), CONN_REFUSED),
+            "Error with the Docker server 'http://localhost:2375': "
+            "[Errno 61] Connection refused",
+        ),
+        (
+            (
+                docker.Client('http://localhost:2375'),
+                ValueError('testing'),
+            ),
+            "Error with the Docker server 'http://localhost:2375': testing",
+        ),
+        (
+            (
+                docker.Client('http://localhost:2375'), ConnectionError(
+                    ProtocolError('Connection aborted.', CONN_REFUSED))
+            ),
+            "Error with the Docker server 'http://localhost:2375': "
+            "[Errno 61] Connection refused",
         ),
     ])
     def test_str(self, args, expected):
