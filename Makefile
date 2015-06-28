@@ -36,8 +36,9 @@ deps: htmldeps pythondeps collectstatic
 styletest:  # don't install deps
 	python_env/bin/pep8 dockci
 	python_env/bin/pylint --rcfile pylint.conf dockci
+unittest: export PYTHONPATH = $(shell pwd)
 unittest:
-	python_env/bin/py.test -vv test
+	python_env/bin/py.test -vv tests
 test: testdeps styletest unittest
 
 # Container commands
