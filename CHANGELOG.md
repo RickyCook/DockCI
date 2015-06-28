@@ -1,5 +1,8 @@
 # Changelog
 
+### v0.0.5
+- Fix display of validation errors when saving a new project
+
 ### v0.0.4-1
 - Fix issue browsing anonymously #187
 

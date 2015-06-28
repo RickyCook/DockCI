@@ -197,7 +197,7 @@ def project_input_view_post(project, edit_operation, fields):
             saved = handle_github_hook(project)
 
         else:
-            project.save()
+            model_flash(project)
 
     elif request.args.get('repo_type', None) == 'github':
         saved = handle_github_hook(project)
