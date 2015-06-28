@@ -7,7 +7,7 @@ import requests.exceptions
 from requests.packages.urllib3.exceptions import ProtocolError
 
 
-class HumanOutputException(object):
+class HumanOutputError(object):
     """
     Mixin for an Exception that can be handled by user output of the string
     repr
@@ -41,7 +41,7 @@ class AlreadyRunError(InvalidOperationError):
         self.runnable = runnable
 
 
-class DockerUnreachableError(Exception, HumanOutputException):
+class DockerUnreachableError(Exception, HumanOutputError):
     """ Raised when Docker is unreachable for some reason """
     def __init__(self, client, exception, message=None):
         super(DockerUnreachableError, self).__init__()
