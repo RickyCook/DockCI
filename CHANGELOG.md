@@ -1,10 +1,10 @@
 # Changelog
 
 ### v0.0.5 (Breaking)
-- **BREAKING** Force project slugs to comply with Docker regex
+- **BREAKING** Force project slugs to comply with Docker regex #192
   - All slugs will be lower-cased
   - Any characters that don't match `[a-z0-9-_.]` will be replaced with `_`
-- Fix display of validation errors when saving a new project
+- Fix display of validation errors when saving a new project #192
 
 ### v0.0.4-1
 - Fix issue browsing anonymously #187
