@@ -14,6 +14,7 @@ from dockci.util import (auth_token_data,
                          create_auth_token,
                          model_flash,
                          request_fill,
+                         str2bool,
                          validate_auth_token,
                          )
 
@@ -21,6 +22,23 @@ from dockci.util import (auth_token_data,
 def shields_io_sanitize(text):
     """ Replace chars in shields.io fields """
     return text.replace('-', '--').replace('_', '__').replace(' ', '_')
+
+
+def default_repo_type():
+    """ Get the default repo type for the request """
+    if 'repo_type' in request.args:
+        repo_type = request.args['repo_type']
+        re.sub(r'[^\w\s]', '', repo_type)
+        return repo_type
+
+    elif current_user is None or not current_user.is_authenticated():
+        return 'manual'
+
+    elif 'github' in current_user.oauth_tokens:
+        return 'github'
+
+    else:
+        return 'manual'
 
 
 @APP.route('/project/<slug>.<extension>', methods=('GET',))
@@ -144,8 +162,10 @@ def project_new_view():
     View to make a new project
     """
     project = Project()
+    project.utility = str2bool(request.args.get('utility', ''))
+
     return project_input_view(project, 'new', [
-        'slug', 'name', 'repo', 'github_secret', 'github_repo_id',
+        'slug', 'name', 'repo', 'github_secret', 'github_repo_id', 'utility',
         'hipchat_api_token', 'hipchat_room',
     ])
 
@@ -173,24 +193,10 @@ def project_input_view(project, edit_operation, fields):
     if request.method == 'POST':
         return project_input_view_post(project, edit_operation, fields)
 
-    if 'repo_type' in request.args:
-        default_repo_type = request.args['repo_type']
-
-    elif current_user is None or not current_user.is_authenticated():
-        default_repo_type = 'manual'
-
-    elif 'github' in current_user.oauth_tokens:
-        default_repo_type = 'github'
-
-    else:
-        default_repo_type = 'manual'
-
-    re.sub(r'[^\w\s]', '', default_repo_type)
-
     return render_template('project_edit.html',
                            project=project,
                            edit_operation=edit_operation,
-                           default_repo_type=default_repo_type,
+                           default_repo_type=default_repo_type(),
                            )
 
 
@@ -235,3 +241,9 @@ def project_input_view_post(project, edit_operation, fields):
         return redirect(
             '/projects/{project_slug}'.format(project_slug=project.slug)
         )
+
+    return render_template('project_edit.html',
+                           project=project,
+                           edit_operation=edit_operation,
+                           default_repo_type=default_repo_type(),
+                           )

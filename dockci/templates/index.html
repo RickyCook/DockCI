@@ -12,6 +12,23 @@
 <table class="table table-striped">
     {% for project in projects %}<tr><td>
         <a href="/projects/{{ project.slug }}">{{ project.name }}</a>
-    </td></tr>{% endfor %}
+    </td></tr>{% else %}<div>
+        You don't have any projects
+    </div>{% endfor %}
+</table>
+
+<h2>Utilities
+{% if current_user.is_authenticated() %}
+    <span class="btn-group pull-right">
+        {{ header_button('content-add', '/projects/new?utility=1') }}
+    </span>
+{% endif %}</h2>
+
+<table class="table table-striped">
+    {% for project in utilities %}<tr><td>
+        <a href="/projects/{{ project.slug }}">{{ project.name }}</a>
+    </td></tr>{% else %}<div>
+        You don't have any utilities
+    </div>{% endfor %}
 </table>
 {% endblock %}

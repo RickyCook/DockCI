@@ -101,7 +101,8 @@
   function dockciJob() {
     var stageAjaxQueue = {},
         importantPanels = ['docker_build', 'docker_test', 'error'],
-        dockerStages = ['docker_provision', 'docker_build', 'docker_push'],
+        dockerStages = ['docker_provision', 'docker_build', 'docker_push', /^utility_.*/],
+        lenientDockerStages = [/^utility_.*/],
         scrollEnabled = false, scrollAnimation = null, maxScroll = 0;
 
     // Turn panel slugs into classes
@@ -177,7 +178,7 @@
       }
       return lineId;
     }
-    function dockerJobLine(panelEl, logEl, obj) {
+    function dockerJobLine(panelEl, logEl, obj, lenient) {
       var idRow, objLine, errorMessage
           isObj = typeof(obj) === 'object';
 
@@ -233,13 +234,33 @@
         } else {
           objLine = obj;
         }
-        logEl.append('<div style="color: red">' + objLine + '</div>');
+        if (lenient) {
+          logEl.append('<div>' + objLine + '</div>');
+        } else {
+          logEl.append('<div style="color: red">' + objLine + '</div>');
+        }
       }
+    }
+    function testMatches(matchList, search) {
+      var idx = 0
+      for (idx = 0; idx < matchList.length; idx++) {
+        if (matchList[idx] instanceof RegExp) {
+          return matchList[idx].test(search)
+        }
+      }
+      return false
+    }
+    function isDockerStage(stageSlug) {
+      if (dockerStages.indexOf(stageSlug) !== -1) { return true }
+      return testMatches(dockerStages, stageSlug)
+    }
+    function isLenientDockerStage(stageSlug) {
+      return testMatches(lenientDockerStages, stageSlug)
     }
     function processNextStage() {
       var sortedQueueIndexes = Object.keys(stageAjaxQueue).sort(),
           incompleteLineBuffer = "", processedChars = 0,
-          stageData;
+          lenient, stageData;
 
       if (sortedQueueIndexes.length === 0) {
         return
@@ -247,6 +268,8 @@
 
       stageData = stageAjaxQueue[sortedQueueIndexes[0]]
       delete stageAjaxQueue[sortedQueueIndexes[0]]
+
+      lenient = isLenientDockerStage(stageData['slug'])
 
       $.ajax({
         url: '/projects/{{ job.project.slug }}/jobs/{{ job.slug }}/output/' + stageData['slug'] + '.log',
@@ -262,7 +285,7 @@
             responseLines = responseText.split('\n');
             processedChars = totalLength;
 
-            if (dockerStages.indexOf(stageData['slug']) !== -1) {
+            if (isDockerStage(stageData['slug'])) {
               // Combine the first line with the previous incomplete line
               responseLines[0] = incompleteLineBuffer + responseLines[0];
 
@@ -275,7 +298,7 @@
                   value = $.parseJSON(value);
                 } catch (err) {}
 
-                dockerJobLine(stageData['stageEl'], logEl, value);
+                dockerJobLine(stageData['stageEl'], logEl, value, lenient);
               }, '');
             } else {
               lastLine = $('div:last', logEl)

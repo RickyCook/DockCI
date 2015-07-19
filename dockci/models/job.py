@@ -7,6 +7,7 @@ import sys
 import tempfile
 
 from datetime import datetime
+from itertools import chain
 
 import docker
 import py.path  # pylint:disable=import-error
@@ -36,6 +37,7 @@ from dockci.models.job_meta.stages_prepare import (GitChangesStage,
                                                    GitMtimeStage,
                                                    ProvisionStage,
                                                    TagVersionStage,
+                                                   UtilStage,
                                                    WorkdirStage,
                                                    )
 from dockci.models.project import Project
@@ -294,16 +296,37 @@ class Job(Model):  # pylint:disable=too-many-instance-attributes
                     lambda: GitInfoStage(self, workdir).run(0),
                 ))
 
-                prepare = (stage() for stage in (
-                    lambda: GitChangesStage(self, workdir).run(0),
-                    lambda: GitMtimeStage(self, workdir).run(None),
-                    lambda: TagVersionStage(self, workdir).run(None),
-                    lambda: ProvisionStage(self).run(0),
-                    lambda: BuildStage(self, workdir).run(0),
-                ))
                 if not all(git_info):
                     self.result = 'broken'
                     return False
+
+                utility_suffixes = UtilStage.slug_suffixes_gen([
+                    config['name']
+                    # pylint:disable=no-member
+                    for config in self.job_config.utilities
+                ])
+                utilities = zip(
+                    # pylint:disable=no-member
+                    utility_suffixes, self.job_config.utilities
+                )
+
+                def create_util_stage(suffix, config):
+                    """ Create a UtilStage wrapped in lambda for running """
+                    return lambda: UtilStage(self, suffix, config).run(0)
+
+                prepare = (stage() for stage in chain(
+                    (
+                        lambda: GitChangesStage(self, workdir).run(0),
+                        lambda: GitMtimeStage(self, workdir).run(None),
+                        lambda: TagVersionStage(self, workdir).run(None),
+                    ), (
+                        create_util_stage(suffix_outer, config_outer)
+                        for suffix_outer, config_outer in utilities
+                    ), (
+                        lambda: ProvisionStage(self).run(0),
+                        lambda: BuildStage(self, workdir).run(0),
+                    )
+                ))
 
                 if self.project.github_repo_id:
                     ExternalStatusStage(self, 'start').run(0)

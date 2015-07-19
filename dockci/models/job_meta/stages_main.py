@@ -149,6 +149,17 @@ class TestStage(DockerStage):
 
     slug = 'docker_test'
 
+    def runnable(self, handle):
+        """
+        Check if we should skip tests before handing over to the
+        ``DockerStage`` runnable to execute Docker-based tests
+        """
+        if self.job.job_config.skip_tests:
+            handle.write("Skipping tests, as per configuration".encode())
+            return 0
+
+        return super(TestStage, self).runnable(handle)
+
     def runnable_docker(self):
         """
         Create a container instance, attach to its outputs and then start it,

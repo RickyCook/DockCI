@@ -7,7 +7,7 @@ import py.error  # pylint:disable=import-error
 from flask import render_template, request
 from flask_security import login_required
 
-from dockci.models.project import all_projects
+from dockci.models.project import Project
 from dockci.server import APP, CONFIG
 from dockci.util import request_fill
 
@@ -17,7 +17,11 @@ def index_view():
     """
     View to display the list of all projects
     """
-    return render_template('index.html', projects=list(all_projects()))
+    return render_template(
+        'index.html',
+        projects=Project.get_where('utility', False),
+        utilities=Project.get_where('utility', True),
+    )
 
 
 @APP.route('/config', methods=('GET', 'POST'))

@@ -448,3 +448,15 @@ def write_all(handle, lines, flush=True):
 
         if flush:
             handle.flush()
+
+
+def str2bool(value):
+    """ Convert a string to a boolean, accounting for english-like terms """
+    value = value.lower()
+
+    try:
+        return bool(int(value))
+    except ValueError:
+        pass
+
+    return value in ('yes', 'true', 'y', 't')
