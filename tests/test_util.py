@@ -1,7 +1,9 @@
+import subprocess
+
 import docker
 import pytest
 
-from dockci.util import client_kwargs_from_config
+from dockci.util import client_kwargs_from_config, is_git_ancestor
 
 
 class TestClientKwargsFromConfig(object):
@@ -123,3 +125,35 @@ class TestClientKwargsFromConfig(object):
             tmpdir.join('key.pem').strpath,
         )
         assert out['tls'].verify == None
+
+
+class TestGitAncestor(object):
+    """ Tests the is_git_ancestor utility """
+    def test_two_commits(self, tmpdir):
+        """
+        Ensure that a commit directly before another is correctly identified as
+        an ancestor, and that the child is identified as not an ancestor
+        """
+        with tmpdir.as_cwd():
+            subprocess.check_call(['git', 'init'])
+            subprocess.check_call(['git', 'config', 'user.name', 'DockCI Test'])
+            subprocess.check_call(['git', 'config', 'user.email', 'test@example.com'])
+
+            with tmpdir.join('file_a.txt').open('w') as handle:
+                handle.write('first file')
+
+            subprocess.check_call(['git', 'add', '.'])
+            subprocess.check_call(['git', 'commit', '-m', 'first'])
+            first_hash = subprocess.check_output(
+                ['git', 'show', '-s', '--format=format:%H']).decode()
+
+            with tmpdir.join('file_b.txt').open('w') as handle:
+                handle.write('second file')
+
+            subprocess.check_call(['git', 'add', '.'])
+            subprocess.check_call(['git', 'commit', '-m', 'second'])
+            second_hash = subprocess.check_output(
+                ['git', 'show', '-s', '--format=format:%H']).decode()
+
+            assert is_git_ancestor(tmpdir, first_hash, second_hash)
+            assert not is_git_ancestor(tmpdir, second_hash, first_hash)

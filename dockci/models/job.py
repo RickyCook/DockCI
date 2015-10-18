@@ -93,9 +93,11 @@ class Job(DB.Model):
     git_changes = DB.Column(DB.Text())
 
     ancestor_job_id = DB.Column(DB.Integer, DB.ForeignKey('job.id'))
-    ancestor_job = DB.relationship('Job',
-                                   uselist=False,
-                                   foreign_keys="Job.ancestor_job_id")
+    child_jobs = DB.relationship(
+        'Job',
+        foreign_keys="Job.ancestor_job_id",
+        backref=DB.backref('ancestor_job', remote_side=[id]),
+    )
     project_id = DB.Column(DB.Integer, DB.ForeignKey('project.id'), index=True)
 
     _provisioned_containers = []

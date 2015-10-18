@@ -92,62 +92,64 @@ class Project(DB.Model):  # pylint:disable=no-init
 
         DB.session.commit()
 
-    def latest_job(self, passed=None, versioned=None, other_check=None):
+    def latest_job(self, passed=None, versioned=None, completed=None):
         """
         Find the latest job matching the criteria
         """
-        try:
-            return next(self.filtered_jobs(passed, versioned, other_check))
+        return self.filtered_jobs(
+            passed=passed,
+            versioned=versioned,
+            completed=completed,
+        ).first()
 
-        except StopIteration:
-            return None
-
-    def filtered_jobs(self, passed=None, versioned=None, other_check=None):
+    def filtered_jobs(self, passed=None, versioned=None, completed=True):
         """
         Generator, filtering jobs matching the criteria
         """
-        for job in list(self.jobs):
-            def job_passed():
-                """ Lazy load of ``job.result`` """
-                # job_passed is used only in this loop iter
-                # pylint:disable=cell-var-from-loop
-                return job.result == 'success'
+        from .job import Job
 
-            if passed is not None and job_passed() != passed:
-                continue
-            if versioned is not None and job.tag is None:
-                continue
-            if other_check is not None and not other_check(job):
-                continue
+        query = self.jobs.order_by(sqlalchemy.desc(Job.create_ts))
 
-            yield job
+        def filter_on_value(query, equal, field, value):
+            """
+            Filter the query for field on a given value being equal, or
+            non-equal
+            """
+            if equal:
+                return query.filter(field == value)
+            else:
+                return query.filter(field != value)
 
-    def latest_completed_job(self):
-        """ Find the latest job that is completed """
-        from dockci.models.job import Job
-        return self.jobs.filter(
-            Job.result.in_(('success', 'fail', 'broken'))
-        ).order_by(
-            sqlalchemy.desc(Job.create_ts)
-        ).first()
+        if passed is not None:
+            query = filter_on_value(query, passed, Job.result, 'success')
+
+        if versioned is not None:
+            query = filter_on_value(query, not versioned, Job.tag, None)
+
+        if completed is not None:
+            query = query.filter(Job.result.in_(('success', 'fail', 'broken')))
+
+        return query
 
     def latest_job_ancestor(self,
                             workdir,
                             commit,
                             passed=None,
-                            versioned=None):
+                            versioned=None,
+                            completed=None):
         """
         Find the latest job, matching the criteria, who's a git ancestor of
         the given commit
         """
 
-        def check_job(job):
-            """
-            Use git merge-base to check
-            """
-            return is_git_ancestor(workdir, job.commit, commit)
-
-        return self.latest_job(passed, versioned, check_job)
+        jobs_query = self.filtered_jobs(
+            passed=passed,
+            versioned=versioned,
+            completed=completed,
+        )
+        for job in jobs_query:
+            if is_git_ancestor(workdir, job.commit, commit):
+                return job
 
     def add_github_webhook(self):
         """
@@ -198,7 +200,7 @@ class Project(DB.Model):  # pylint:disable=no-init
     @property
     def status(self):
         """ Status of the last job for this project """
-        latest_completed_job = self.latest_completed_job()
+        latest_completed_job = self.latest_job(completed=True)
         if latest_completed_job is not None:
             return latest_completed_job.result
 
