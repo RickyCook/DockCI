@@ -8,6 +8,7 @@
 - Compose file for quickly starting a dev environment
 - Use Flask-Script for better command integration
 - Early job worker loop to handle dirty DB from the UI workers
+- Handle mail failures in Flask-Security gracefully
 
 ### v0.0.7
 - Fix 500 error when new project is saved with validation issue #220

@@ -11,10 +11,11 @@ from flask_security.utils import verify_and_update_password
 from dockci.api.base import BaseRequestParser
 from dockci.api.util import clean_attrs
 from dockci.models.auth import User
-from dockci.server import APP, CONFIG
+from dockci.server import APP, CONFIG, MAIL
 
 
-LOGIN_MANAGER = APP.extensions['security'].login_manager
+SECURITY_STATE = APP.extensions['security']
+LOGIN_MANAGER = SECURITY_STATE.login_manager
 LOGIN_FORM = BaseRequestParser()
 
 API_RE = re.compile(r'/api/.*')
@@ -66,6 +67,15 @@ def request_loader(_):  # has request as arg
     ``try_reqparser``), then basic auth (see ``try_basic_auth``)
     """
     return try_reqparser() or try_basic_auth()
+
+
+@SECURITY_STATE.send_mail_task
+def security_mail_task(message):
+    """ Handle mail failures in Flask-Security by flashing a message """
+    try:
+        MAIL.send(message)
+    except Exception:  # pylint:disable=broad-except
+        flash("Couldn't send email message", 'danger')
 
 
 def try_jwt(token):
