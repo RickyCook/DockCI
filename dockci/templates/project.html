@@ -5,7 +5,7 @@
 {% block prescript %}<script src="/static/lib/js/URI.js"></script>{% endblock %}
 {% block header %}
   <span data-bind="text:project().name"></span>
-  {% if current_user.is_authenticated() %}
+  {% if current_user.is_authenticated %}
     <span class="btn-group pull-right">
       <!-- ko component: {
         name: 'header-button',

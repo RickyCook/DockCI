@@ -2,7 +2,7 @@
 {% block title %}Projects{% endblock %}
 {% block header %}
     Projects
-    {% if current_user.is_authenticated() %}
+    {% if current_user.is_authenticated %}
         <span class="btn-group pull-right">
             <header-button params="icon:'plus', click:addHandler.bind($data, 'project')"></header-button>
         </span>
@@ -24,7 +24,7 @@
 </div>
 
 <h2>Utilities
-{% if current_user.is_authenticated() %}
+{% if current_user.is_authenticated %}
     <span class="btn-group pull-right">
         <header-button params="icon:'plus', click:addHandler.bind($data, 'utility')"></header-button>
     </span>

@@ -114,8 +114,8 @@
   </style>
   <script>
     dockci = {}
-    dockci.githubEnabled = {{ 'true' if (current_user.is_authenticated() and config.model.github_key and config.model.github_secret) else 'false' }}
-    dockci.githubDefault = dockci.githubEnabled && {{ 'true' if (current_user.is_authenticated() and current_user.oauth_tokens.filter_by(service='github').count()) else 'false' }}
+    dockci.githubEnabled = {{ 'true' if (current_user.is_authenticated and config.model.github_key and config.model.github_secret) else 'false' }}
+    dockci.githubDefault = dockci.githubEnabled && {{ 'true' if (current_user.is_authenticated and current_user.oauth_tokens.filter_by(service='github').count()) else 'false' }}
     function error_message_for(status, error) {
       if (error == '') {
         if (status == 0) {
@@ -138,7 +138,7 @@
         <a class="navbar-brand" href="/">DockCI</a>
       </div>
       <ul class="navbar-right nav navbar-nav">
-        {% if current_user.is_authenticated() %}
+        {% if current_user.is_authenticated %}
           <li class="navbar-brand">{{ current_user.email }}</li>
           {% if not config.model.exists() %}<li><i class="navbar-brand glyphicon glyphicon-warning-sign text-error"></i></li>{% endif %}
           {% if config.model.restart_needed %}<li><i class="navbar-brand glyphicon glyphicon-warning-sign text-warning"></i></li>{% endif %}

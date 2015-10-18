@@ -330,7 +330,7 @@ def get_token_for(oauth_app):
     """
     Get a token for the currently logged in user
     """
-    if current_user.is_authenticated():
+    if current_user.is_authenticated:
         token = current_user.oauth_tokens.filter_by(
             service=oauth_app.name,
         ).first()
