@@ -122,21 +122,48 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
         )
 
 
+class UserEmail(DB.Model):  # pylint:disable=no-init
+    id=DB.Column(DB.Integer, primary_key=True)
+    email = DB.Column(DB.String(255), unique=True, index=True)
+    user_id = DB.Column(DB.Integer,
+                        DB.ForeignKey('user.id'),
+                        index=True,
+                        nullable=False)
+    user = DB.relationship('User',
+                           foreign_keys="UserEmail.user_id",
+                           backref=DB.backref('emails', lazy='dynamic'))
+
+
 class User(DB.Model, UserMixin):  # pylint:disable=no-init
     """ User model for authentication """
     id = DB.Column(DB.Integer, primary_key=True)
-    email = DB.Column(DB.String(255), unique=True, index=True)
     password = DB.Column(DB.String(255))
     active = DB.Column(DB.Boolean())
     confirmed_at = DB.Column(DB.DateTime())
+    primary_email_id = DB.Column(DB.Integer,
+                                 DB.ForeignKey('user_email.id'),
+                                 index=True,
+                                 nullable=False)
+    primary_email = DB.relationship('UserEmail',
+                                    foreign_keys="User.primary_email_id")
     roles = DB.relationship('Role',
                             secondary=ROLES_USERS,
                             backref=DB.backref('users', lazy='dynamic'))
 
+    @property
+    def email(self):
+        return self.primary_email.email
+
+    @email.setter
+    def set_email(self, value):
+        email = UserEmail(email=value, user=self)
+        self.primary_email = email
+        DB.session.add(email)
+
     def __str__(self):
-        return '<{klass}: {email} ({active})>'.format(
+        return '<{klass}: {primary_email} ({active})>'.format(
             klass=self.__class__.__name__,
-            email=self.email,
+            primary_email=self.primary_email,
             active='active' if self.active else 'inactive'
         )
 
