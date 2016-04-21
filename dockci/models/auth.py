@@ -150,16 +150,6 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
                             secondary=ROLES_USERS,
                             backref=DB.backref('users', lazy='dynamic'))
 
-    @property
-    def email(self):
-        return self.primary_email.email
-
-    @email.setter
-    def set_email(self, value):
-        email = UserEmail(email=value, user=self)
-        self.primary_email = email
-        DB.session.add(email)
-
     def __str__(self):
         return '<{klass}: {primary_email} ({active})>'.format(
             klass=self.__class__.__name__,
