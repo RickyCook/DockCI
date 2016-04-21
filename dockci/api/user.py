@@ -6,7 +6,7 @@ from .base import BaseDetailResource, BaseRequestParser
 from .fields import GravatarUrl, NonBlankInput, RewriteUrl
 from .util import DT_FORMATTER, new_edit_parsers
 from dockci.models.auth import User
-from dockci.server import API
+from dockci.server import API, DB
 
 
 BASIC_FIELDS = {
@@ -97,6 +97,17 @@ class MeDetail(Resource):
         return UserDetail().post(None, current_user)
 
 
+class MeEmailDetail(Resource):
+    """ Deletion of user email addresses """
+    @login_required
+    def delete(self, email):
+        """ Delete an email from the current user """
+        email = current_user.emails.filter_by(email=email).first_or_404()
+        DB.session.delete(email)
+        DB.session.commit()
+        return {'message': '%s deleted' % email.email}
+
+
 API.add_resource(UserList,
                  '/users',
                  endpoint='user_list')
@@ -106,3 +117,6 @@ API.add_resource(UserDetail,
 API.add_resource(MeDetail,
                  '/me',
                  endpoint='me_detail')
+API.add_resource(MeEmailDetail,
+                 '/me/<string:email>',
+                 endpoint='me_email_detail')
