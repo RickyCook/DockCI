@@ -11,7 +11,7 @@ from dockci.server import API
 
 BASIC_FIELDS = {
     'id': fields.Integer(),
-    'primary_email': fields.String(),
+    'primary_email': fields.String(attribute='primary_email.email'),
     'active': fields.Boolean(),
 }
 
@@ -22,9 +22,9 @@ LIST_FIELDS.update(BASIC_FIELDS)
 
 
 DETAIL_FIELDS = {
-    'avatar': GravatarUrl(attr_name='primary_email'),
+    'avatar': GravatarUrl(attr_name='primary_email.email'),
     'confirmed_at': DT_FORMATTER,
-    'emails': fields.List(fields.String()),
+    'emails': fields.List(fields.String(attribute='email')),
 }
 DETAIL_FIELDS.update(BASIC_FIELDS)
 
