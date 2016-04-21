@@ -74,8 +74,8 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
         >>> other.scope
         'sco'
 
-        >>> user1 = User(email='1@test.com')
-        >>> user2 = User(email='2@test.com')
+        >>> user1 = User(primary_email=UserEmail(email='1@test.com'))
+        >>> user2 = User(primary_email=UserEmail(email='2@test.com'))
         >>> base = OAuthToken(secret='basesec', user=user1)
         >>> other = OAuthToken(secret='othersec', user=user2)
         >>> other.update_details_from(base)
@@ -100,7 +100,7 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
         if not (
             self.user is None or
             other.user is None or
-            self.user.email == other.user.email
+            self.user.primary_email == other.user.primary_email
         ):
             raise ValueError(
                 "Trying to set token details for user %s from user %s" % (
@@ -153,7 +153,7 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
     def __str__(self):
         return '<{klass}: {primary_email} ({active})>'.format(
             klass=self.__class__.__name__,
-            primary_email=self.primary_email,
+            primary_email=self.primary_email.email,
             active='active' if self.active else 'inactive'
         )
 
