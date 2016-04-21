@@ -27,6 +27,7 @@
 - Job stream gives `null` for `init_*` when a job has no stages #444
 - Change OAuth `return_to` param to `next` #445
 - Add more error handling to OAuth #445
+- Users may have multiple emails
 
 ### v0.0.9
 - Exception reported to Rollbar on git push hook `ValidationError` #322
