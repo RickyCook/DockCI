@@ -151,7 +151,7 @@
       </div>
       <ul class="navbar-right nav navbar-nav">
         {% if current_user.is_authenticated() %}
-          <li class="navbar-brand">{{ current_user.email }}</li>
+          <li class="navbar-brand">{{ current_user.primary_email.email }}</li>
           {% if not config.model.exists() %}<li><i class="navbar-brand glyphicon glyphicon-warning-sign text-error"></i></li>{% endif %}
           {% if config.model.restart_needed %}<li><i class="navbar-brand glyphicon glyphicon-warning-sign text-warning"></i></li>{% endif %}
           <li><a href="/config"><i class="glyphicon glyphicon-cog"></i></a></li>
