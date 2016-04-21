@@ -118,7 +118,7 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
         return '<{klass}: {service} for {email}>'.format(
             klass=self.__class__.__name__,
             service=self.service,
-            email=self.user.email,
+            email=self.user.primary_email.email,
         )
 
 
