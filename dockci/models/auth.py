@@ -4,6 +4,7 @@ Users and permissions models
 
 import sqlalchemy
 
+from flask_dance.consumer.backend.sqla import OAuthConsumerMixin
 from flask_security import UserMixin, RoleMixin
 from sqlalchemy.ext.hybrid import hybrid_property
 
@@ -29,13 +30,9 @@ class Role(DB.Model, RoleMixin):
         )
 
 
-class OAuthToken(DB.Model):  # pylint:disable=no-init
+class OAuthToken(DB.Model, OAuthConsumerMixin):  # pylint:disable=no-init
     """ An OAuth token from a service, for a user """
     id = DB.Column(DB.Integer(), primary_key=True)
-    service = DB.Column(DB.String(31))
-    key = DB.Column(DB.String(80))
-    secret = DB.Column(DB.String(80))
-    scope = DB.Column(DB.String(255))
     user_id = DB.Column(DB.Integer, DB.ForeignKey('user.id'), index=True)
     user = DB.relationship('User',
                            foreign_keys="OAuthToken.user_id",
@@ -116,9 +113,9 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
                 setattr(self, attr_name, other_val)
 
     def __str__(self):
-        return '<{klass}: {service} for {email}>'.format(
+        return '<{klass}: {provider} for {email}>'.format(
             klass=self.__class__.__name__,
-            service=self.service,
+            provider=self.provider,
             email=self.user.primary_email.email,
         )
 
@@ -198,7 +195,7 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
     def oauth_token_for(self, service_name):
         """ Get an OAuth token for a service """
         return self.oauth_tokens.filter_by(
-            service=service_name,
+            provider=service_name,
         ).order_by(sqlalchemy.desc(OAuthToken.id)).first()
 
 

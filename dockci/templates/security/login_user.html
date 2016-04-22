@@ -31,12 +31,12 @@
         <div class="panel-heading">{{ 'Or...' if config.model.security_registerable_form else 'External User' }}</div>
         <div class="panel-body">
           {% if config.model.security_github_enabled %}
-            <a class="col-sm-{{ 12 if config.model.security_registerable_form else 2 }}" href="{{ url_for('oauth_login', name='github') }}">
+            <a class="col-sm-{{ 12 if config.model.security_registerable_form else 2 }}" href="{{ url_for('github.login') }}">
               <img style="width:100%" src="/static/img/octocat.svg" title="Login/Register with GitHub" />
             </a>
           {% endif %}
-          {% if config.model.security_gitlab_enabled %}
-            <a class="col-sm-{{ 12 if config.model.security_registerable_form else 2 }}" href="{{ url_for('oauth_login', name='gitlab') }}">
+          {% if False and config.model.security_gitlab_enabled %}
+            <a class="col-sm-{{ 12 if config.model.security_registerable_form else 2 }}" href="{{ url_for('gitlab.login') }}">
               <img style="width:100%" src="/static/img/gitlab.svg" title="Login/Register with GitLab" />
             </a>
           {% endif %}

@@ -116,9 +116,9 @@
   <script>
     dockci = {}
     dockci.gitlabEnabled = {{ 'true' if (current_user.is_authenticated() and config.model.gitlab_enabled) else 'false' }}
-    dockci.gitlabDefault = dockci.gitlabEnabled && {{ 'true' if (current_user.is_authenticated() and current_user.oauth_tokens.filter_by(service='gitlab').count()) else 'false' }}
+    dockci.gitlabDefault = dockci.gitlabEnabled && {{ 'true' if (current_user.is_authenticated() and current_user.oauth_tokens.filter_by(provider='gitlab').count()) else 'false' }}
     dockci.githubEnabled = {{ 'true' if (current_user.is_authenticated() and config.model.github_enabled) else 'false' }}
-    dockci.githubDefault = !dockci.gitlabDefault && dockci.githubEnabled && {{ 'true' if (current_user.is_authenticated() and current_user.oauth_tokens.filter_by(service='github').count()) else 'false' }}
+    dockci.githubDefault = !dockci.gitlabDefault && dockci.githubEnabled && {{ 'true' if (current_user.is_authenticated() and current_user.oauth_tokens.filter_by(provider='github').count()) else 'false' }}
     dockci.rabbitmqServer = {{ ('"%s"' % config.model.external_rabbit_uri if config.model.external_rabbit_uri else 'default_rabbitmq_server()') | safe }}
     dockci.rabbitmqUser = '{{ config.RABBITMQ_USER_FE }}'
     dockci.rabbitmqPassword = '{{ config.RABBITMQ_PASSWORD_FE }}'

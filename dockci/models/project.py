@@ -15,7 +15,7 @@ from flask import url_for
 
 from .base import RepoFsMixin
 from .db_types import RegexType
-from dockci.server import CONFIG, DB, OAUTH_APPS
+from dockci.server import CONFIG, DB
 from dockci.util import (ext_url_for,
                          is_git_ancestor,
                          is_git_hash,
@@ -208,7 +208,7 @@ class Project(DB.Model, RepoFsMixin):  # pylint:disable=no-init
         return (
             getattr(self, '%s_repo_id' % service) and
             self.external_auth_token and
-            self.external_auth_token.service == service
+            self.external_auth_token.provider == service
         )
 
     @property

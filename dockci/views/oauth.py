@@ -18,10 +18,9 @@ from dockci.models.auth import OAuthToken, User
 from dockci.server import (APP,
                            CONFIG,
                            DB,
-                           OAUTH_APPS,
                            OAUTH_APPS_SCOPE_SERIALIZERS,
                            )
-from dockci.util import ext_url_for, get_token_for
+from dockci.util import ext_url_for#, get_token_for
 
 
 RE_VALID_OAUTH = re.compile(r'^[a-z]+$')
@@ -175,7 +174,7 @@ def associate_user(name, user, oauth_token):
 
     # Delete other tokens if the user exists, and token is new
     if user.id is not None and oauth_token.id is None:
-        user.oauth_tokens.filter_by(service=name).delete(
+        user.oauth_tokens.filter_by(provider=name).delete(
             synchronize_session=False,
         )
 
@@ -201,7 +200,7 @@ def get_oauth_token(name, response):
     """
     try:
         oauth_token = OAuthToken.query.filter_by(
-            service=name,
+            provider=name,
             key=response['access_token'],
         ).one()
 
@@ -224,7 +223,7 @@ def get_oauth_token(name, response):
 def create_oauth_token(name, response):
     """ Create a new ``OAuthToken`` from an OAuth response """
     return OAuthToken(
-        service=name,
+        provider=name,
         key=response['access_token'],
         secret='',
         scope=OAUTH_APPS_SCOPE_SERIALIZERS[name](response['scope'])
@@ -269,15 +268,17 @@ def user_from_oauth(name, response):
         pass
 
     else:
-        if user_by_email.oauth_tokens.filter_by(service=name).count() > 0:
+        if user_by_email.oauth_tokens.filter_by(provider=name).count() > 0:
             return user_by_email, oauth_token
 
         else:
             raise OAuthRegError("A user is already registered "
                                 "with the email '%s'" % user_email)
 
+    user_obj = User(active=true)
+    email_obj = UserEmail(email=user_email, user=user_obj)
+    user_obj.primary_email = email_obj
     return User(
-        primary_email=user_email,
         active=True,
     ), oauth_token
 

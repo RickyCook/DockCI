@@ -5,7 +5,7 @@ import json
 
 from flask import request, Response
 
-from dockci.server import APP, OAUTH_APPS
+from dockci.server import APP
 from dockci.views.oauth import oauth_required
 
 
