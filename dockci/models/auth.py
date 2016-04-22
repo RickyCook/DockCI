@@ -124,7 +124,8 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
 
 
 class UserEmail(DB.Model):  # pylint:disable=no-init
-    id=DB.Column(DB.Integer, primary_key=True)
+    """ Email addresses associated with users """
+    id = DB.Column(DB.Integer, primary_key=True)
     email = DB.Column(DB.String(255), unique=True, index=True)
     user_id = DB.Column(DB.Integer,
                         DB.ForeignKey('user.id'),
@@ -152,28 +153,39 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
                             backref=DB.backref('users', lazy='dynamic'))
 
     @hybrid_property
-    def primary_email_str(self):
+    def primary_email_str(self):  # pylint:disable=method-hidden
+        """ Get ``primary_email.email`` """
         return self.primary_email.email
 
     @primary_email_str.setter
-    def primary_email_str(self, value):
+    def primary_email_str(self, value):  # pylint:disable=method-hidden
+        """
+        Setter to create new ``UserEmail`` and set ``primary_email`` from a
+        string
+        """
         email = UserEmail(email=value, user=self)
         DB.session.add(email)
 
     @primary_email_str.expression
-    def primary_email_str(cls):
+    def primary_email_str(cls):  # noqa pylint:disable=no-self-argument,no-self-use,method-hidden
+        """
+        Unwrap the ``UserEmail`` from ``primary_email`` for easy querying
+        """
         return UserEmail.email
 
     @hybrid_property
     def email(self):
+        """ For Flask-Security; See ``primary_email`` """
         return self.primary_email_str
 
     @email.setter
     def email(self, value):
+        """ For Flask-Security; See ``primary_email`` setter """
         self.primary_email_str = value
 
     @email.expression
-    def email(cls):
+    def email(cls):  # pylint:disable=no-self-argument
+        """ For Flask-Security; See ``primary_email`` expression """
         return cls.primary_email_str
 
     def __str__(self):
