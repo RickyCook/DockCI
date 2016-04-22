@@ -5,6 +5,7 @@ Users and permissions models
 import sqlalchemy
 
 from flask_security import UserMixin, RoleMixin
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from dockci.server import DB
 
@@ -149,6 +150,31 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
     roles = DB.relationship('Role',
                             secondary=ROLES_USERS,
                             backref=DB.backref('users', lazy='dynamic'))
+
+    @hybrid_property
+    def primary_email_str(self):
+        return self.primary_email.email
+
+    @primary_email_str.setter
+    def primary_email_str(self, value):
+        email = UserEmail(email=value, user=self)
+        DB.session.add(email)
+
+    @primary_email_str.expression
+    def primary_email_str(cls):
+        return UserEmail.email
+
+    @hybrid_property
+    def email(self):
+        return self.primary_email_str
+
+    @email.setter
+    def email(self, value):
+        self.primary_email_str = value
+
+    @email.expression
+    def email(cls):
+        return cls.primary_email_str
 
     def __str__(self):
         return '<{klass}: {primary_email} ({active})>'.format(

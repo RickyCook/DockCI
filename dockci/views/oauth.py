@@ -261,7 +261,9 @@ def user_from_oauth(name, response):
             "Couldn't get email address from %s" % name.title())
 
     try:
-        user_by_email = User.query.filter_by(email=user_email).one()
+        user_by_email = User.query.filter_by(
+            primary_email_str=user_email,
+        ).one()
 
     except NoResultFound:
         pass
@@ -275,7 +277,7 @@ def user_from_oauth(name, response):
                                 "with the email '%s'" % user_email)
 
     return User(
-        email=user_email,
+        primary_email=user_email,
         active=True,
     ), oauth_token
 

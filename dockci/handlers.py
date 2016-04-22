@@ -112,7 +112,7 @@ def try_user_pass(password, lookup):
         user = User.query.get(int(lookup))
 
     except ValueError:
-        user = User.query.filter_by(email=lookup).first()
+        user = User.query.filter_by(primary_email_str=lookup).first()
 
     if not user:
         return None
