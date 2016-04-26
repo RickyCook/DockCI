@@ -123,14 +123,15 @@ class OAuthToken(DB.Model, OAuthConsumerMixin):  # pylint:disable=no-init
 class UserEmail(DB.Model):  # pylint:disable=no-init
     """ Email addresses associated with users """
     id = DB.Column(DB.Integer, primary_key=True)
-    email = DB.Column(DB.String(255), unique=True, index=True)
+    email = DB.Column(DB.String(255), unique=True, index=True, nullable=False)
     user_id = DB.Column(DB.Integer,
                         DB.ForeignKey('user.id'),
                         index=True,
-                        nullable=False)
+                        nullable=True)
     user = DB.relationship('User',
                            foreign_keys="UserEmail.user_id",
-                           backref=DB.backref('emails', lazy='dynamic'))
+                           backref=DB.backref('emails', lazy='dynamic'),
+                           post_update=True)
 
 
 class User(DB.Model, UserMixin):  # pylint:disable=no-init
@@ -170,20 +171,20 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
         """
         return UserEmail.email
 
-    @hybrid_property
-    def email(self):
-        """ For Flask-Security; See ``primary_email`` """
-        return self.primary_email_str
+    #@hybrid_property
+    #def email(self):
+    #    """ For Flask-Security; See ``primary_email`` """
+    #    return self.primary_email_str
 
-    @email.setter
-    def email(self, value):
-        """ For Flask-Security; See ``primary_email`` setter """
-        self.primary_email_str = value
+    #@email.setter
+    #def email(self, value):
+    #    """ For Flask-Security; See ``primary_email`` setter """
+    #    self.primary_email_str = value
 
-    @email.expression
-    def email(cls):  # pylint:disable=no-self-argument
-        """ For Flask-Security; See ``primary_email`` expression """
-        return cls.primary_email_str
+    #@email.expression
+    #def email(cls):  # pylint:disable=no-self-argument
+    #    """ For Flask-Security; See ``primary_email`` expression """
+    #    return cls.primary_email_str
 
     def __str__(self):
         return '<{klass}: {primary_email} ({active})>'.format(

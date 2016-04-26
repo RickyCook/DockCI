@@ -264,7 +264,8 @@ def app_init_oauth():
             logging.warning('login hook')
             from flask import flash
             from flask_login import login_user
-            from .models.auth import User
+            from .models.auth import User, UserEmail
+            from sqlalchemy.orm.exc import NoResultFound
             if not token:
                 flash("Failed to log in with {name}".format(name=blueprint_inner.name))
                 return
@@ -274,20 +275,34 @@ def app_init_oauth():
             if resp.ok:
                 logging.warning('resp: %s', resp.json())
                 email = resp.json()["email"]
-                query = User.query.filter_by(primary_email_str=email)
-                #try:
-                user = query.one()
-                logging.warning('user: %s', user)
-                #except NoResultFound:
-                #    # create a user
-                #    user = User(username=username)
-                #    db.session.add(user)
-                #    db.session.commit()
-                login_user(user)
+                query = User.query.join(
+                    User.primary_email
+                ).filter(
+                    User.primary_email_str == email,
+                )
+                try:
+                    user = query.one()
+                except NoResultFound:
+                    email_obj = UserEmail(email=email)
+                    user = User(primary_email=email_obj)
+                    email_obj.user = user
+                    DB.session.add(email_obj)
+                    DB.session.add(user)
+                    DB.session.commit()
+
+                if not user.active:
+                    flash(
+                        "User '%s' is inactive" % user.primary_email.email,
+                        category='danger',
+                    )
+                    return
+
                 flash("Successfully signed in with GitHub")
+                logging.warning(user)
+                login_user(user)
             else:
                 msg = "Failed to fetch user info from {name}".format(name=blueprint.name)
-                flash(msg, category="error")
+                flash(msg, category='danger')
 
 
     #if CONFIG.gitlab_enabled:
