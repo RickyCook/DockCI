@@ -148,8 +148,8 @@ def oauth_authorized(name):
                                         "with the email '%s'" % user_email)
 
                 # Add a new email to the user if necessary
-                if UserEmail.query.filter(
-                        UserEmail.email.ilike(user_email),
+                if current_user.emails.filter(
+                    UserEmail.email.ilike(user_email),
                 ).count() == 0:
                     DB.session.add(UserEmail(
                         email=user_email,
