@@ -107,8 +107,19 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
         >>> other.scope
         'sco'
 
-        >>> user1 = User(email=UserEmail(email='1@test.com'))
-        >>> user2 = User(email=UserEmail(email='2@test.com'))
+        >>> user1 = User(email='1@test.com')
+        >>> user2 = User(email='2@test.com')
+        >>> base = OAuthToken(secret='basesec', user=user1)
+        >>> other = OAuthToken(secret='othersec', user=user2)
+        >>> other.update_details_from(base)
+        ... # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+          ...
+        ValueError: Trying to set token details
+        for user <User: 2@test.com... from user <User: 1@test.com...
+
+        >>> user1 = User(email_obj=UserEmail(email='1@test.com'))
+        >>> user2 = User(email_obj=UserEmail(email='2@test.com'))
         >>> base = OAuthToken(secret='basesec', user=user1)
         >>> other = OAuthToken(secret='othersec', user=user2)
         >>> other.update_details_from(base)
@@ -130,10 +141,10 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
         >>> other.update_details_from(base)
         """
         # Don't allow accidental cross-user updates
-        if not (
-            self.user is None or
-            other.user is None or
-            self.user.email == other.user.email
+        if (
+            self.user is not None and
+            other.user is not None and
+            self.user.email_str != other.user.email_str
         ):
             raise ValueError(
                 "Trying to set token details for user %s from user %s" % (
@@ -189,7 +200,7 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
     def __str__(self):
         return '<{klass}: {email} ({active})>'.format(
             klass=self.__class__.__name__,
-            email=self.email,
+            email=self.email_str,
             active='active' if self.active else 'inactive'
         )
 
@@ -198,6 +209,27 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
         return self.oauth_tokens.filter_by(
             service=service_name,
         ).order_by(sqlalchemy.desc(OAuthToken.id)).first()
+
+    @property
+    def email_str(self):
+        """
+        Return the email field, falling back to ``email_obj.email``
+
+        Examples:
+
+        >>> User(email='test').email_str
+        'test'
+
+        >>> User(email_obj=UserEmail(email='test')).email_str
+        'test'
+
+        >>> User().email_str
+        """
+        if self.email is not None:
+            return self.email
+
+        if self.email_obj is not None:
+            return self.email_obj.email
 
 
 class AuthenticatedRegistry(DB.Model):  # pylint:disable=no-init
