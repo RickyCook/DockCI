@@ -6,7 +6,7 @@ from flask_security import current_user, login_required
 from .base import BaseDetailResource, BaseRequestParser
 from .fields import GravatarUrl, NonBlankInput, RewriteUrl
 from .util import DT_FORMATTER, new_edit_parsers
-from dockci.models.auth import User
+from dockci.models.auth import User, UserEmail
 from dockci.server import API, APP, DB
 
 
