@@ -11,7 +11,7 @@ from dockci.server import API, DB
 
 BASIC_FIELDS = {
     'id': fields.Integer(),
-    'primary_email': fields.String(attribute='primary_email.email'),
+    'email': fields.String(attribute='email'),
     'active': fields.Boolean(),
 }
 
@@ -22,15 +22,15 @@ LIST_FIELDS.update(BASIC_FIELDS)
 
 
 DETAIL_FIELDS = {
-    'avatar': GravatarUrl(attr_name='primary_email.email'),
+    'avatar': GravatarUrl(attr_name='email'),
     'confirmed_at': DT_FORMATTER,
-    'emails': fields.List(fields.String(attribute='email')),
+    'emails': fields.List(fields.String()),
 }
 DETAIL_FIELDS.update(BASIC_FIELDS)
 
 
 SHARED_PARSER_ARGS = {
-    'primary_email': dict(
+    'email': dict(
         help="Contact email address",
         required=None, type=NonBlankInput(),
     ),

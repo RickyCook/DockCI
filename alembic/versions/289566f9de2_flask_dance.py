@@ -1,14 +1,14 @@
 """flask dance
 
 Revision ID: 289566f9de2
-Revises: ba63ec7d4f
+Revises: 448338b03a3
 Create Date: 2016-04-22 05:36:40.082750
 
 """
 
 # revision identifiers, used by Alembic.
 revision = '289566f9de2'
-down_revision = 'ba63ec7d4f'
+down_revision = '448338b03a3'
 branch_labels = None
 depends_on = None
 

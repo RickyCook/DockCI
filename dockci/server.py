@@ -286,16 +286,14 @@ def app_init_oauth():
             if resp.ok:
                 logging.warning('resp: %s', resp.json())
                 email = resp.json()["email"]
-                query = User.query.join(
-                    User.primary_email
-                ).filter(
-                    User.primary_email_str == email,
+                query = User.query.filter(
+                    User.email == email,
                 )
                 try:
                     user = query.one()
                 except NoResultFound:
                     email_obj = UserEmail(email=email)
-                    user = User(primary_email=email_obj)
+                    user = User(email_obj=email_obj)
                     email_obj.user = user
                     DB.session.add(email_obj)
                     DB.session.add(user)
@@ -303,7 +301,7 @@ def app_init_oauth():
 
                 if not user.active:
                     flash(
-                        "User '%s' is inactive" % user.primary_email.email,
+                        "User '%s' is inactive" % user.email,
                         category='danger',
                     )
                     return

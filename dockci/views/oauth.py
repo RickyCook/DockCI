@@ -261,7 +261,7 @@ def user_from_oauth(name, response):
 
     try:
         user_by_email = User.query.filter_by(
-            primary_email_str=user_email,
+            email=user_email,
         ).one()
 
     except NoResultFound:
@@ -277,7 +277,7 @@ def user_from_oauth(name, response):
 
     user_obj = User(active=true)
     email_obj = UserEmail(email=user_email, user=user_obj)
-    user_obj.primary_email = email_obj
+    user_obj.email = email_obj
     return User(
         active=True,
     ), oauth_token

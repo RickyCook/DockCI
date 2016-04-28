@@ -72,8 +72,8 @@ class OAuthToken(DB.Model, OAuthConsumerMixin):  # pylint:disable=no-init
         >>> other.scope
         'sco'
 
-        >>> user1 = User(primary_email=UserEmail(email='1@test.com'))
-        >>> user2 = User(primary_email=UserEmail(email='2@test.com'))
+        >>> user1 = User(email=UserEmail(email='1@test.com'))
+        >>> user2 = User(email=UserEmail(email='2@test.com'))
         >>> base = OAuthToken(secret='basesec', user=user1)
         >>> other = OAuthToken(secret='othersec', user=user2)
         >>> other.update_details_from(base)
@@ -98,7 +98,7 @@ class OAuthToken(DB.Model, OAuthConsumerMixin):  # pylint:disable=no-init
         if not (
             self.user is None or
             other.user is None or
-            self.user.primary_email == other.user.primary_email
+            self.user.email == other.user.email
         ):
             raise ValueError(
                 "Trying to set token details for user %s from user %s" % (
@@ -116,7 +116,7 @@ class OAuthToken(DB.Model, OAuthConsumerMixin):  # pylint:disable=no-init
         return '<{klass}: {provider} for {email}>'.format(
             klass=self.__class__.__name__,
             provider=self.provider,
-            email=self.user.primary_email.email,
+            email=self.user.email,
         )
 
 
@@ -140,56 +140,22 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
     password = DB.Column(DB.String(255))
     active = DB.Column(DB.Boolean())
     confirmed_at = DB.Column(DB.DateTime())
-    primary_email_id = DB.Column(DB.Integer,
-                                 DB.ForeignKey('user_email.id'),
+    email = DB.Column(DB.String(255),
+                                 DB.ForeignKey('user_email.email'),
                                  index=True,
+                                 unique=True,
                                  nullable=False)
-    primary_email = DB.relationship('UserEmail',
-                                    foreign_keys="User.primary_email_id")
+    email_obj = DB.relationship('UserEmail',
+                                    foreign_keys="User.email",
+                                    )
     roles = DB.relationship('Role',
                             secondary=ROLES_USERS,
                             backref=DB.backref('users', lazy='dynamic'))
 
-    @hybrid_property
-    def primary_email_str(self):  # pylint:disable=method-hidden
-        """ Get ``primary_email.email`` """
-        return self.primary_email.email
-
-    @primary_email_str.setter
-    def primary_email_str(self, value):  # pylint:disable=method-hidden
-        """
-        Setter to create new ``UserEmail`` and set ``primary_email`` from a
-        string
-        """
-        email = UserEmail(email=value, user=self)
-        DB.session.add(email)
-
-    @primary_email_str.expression
-    def primary_email_str(cls):  # noqa pylint:disable=no-self-argument,no-self-use,method-hidden
-        """
-        Unwrap the ``UserEmail`` from ``primary_email`` for easy querying
-        """
-        return UserEmail.email
-
-    #@hybrid_property
-    #def email(self):
-    #    """ For Flask-Security; See ``primary_email`` """
-    #    return self.primary_email_str
-
-    #@email.setter
-    #def email(self, value):
-    #    """ For Flask-Security; See ``primary_email`` setter """
-    #    self.primary_email_str = value
-
-    #@email.expression
-    #def email(cls):  # pylint:disable=no-self-argument
-    #    """ For Flask-Security; See ``primary_email`` expression """
-    #    return cls.primary_email_str
-
     def __str__(self):
-        return '<{klass}: {primary_email} ({active})>'.format(
+        return '<{klass}: {email} ({active})>'.format(
             klass=self.__class__.__name__,
-            primary_email=self.primary_email.email,
+            email=self.email,
             active='active' if self.active else 'inactive'
         )
 
