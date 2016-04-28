@@ -301,9 +301,10 @@ def user_from_oauth(name, response):
             raise OAuthRegError("A user is already registered "
                                 "with the email '%s'" % user_email)
 
-    user_obj = User(active=True, email=user_email)
-    email_obj = UserEmail(email=user_email, user=user_obj)
-
+    user_obj = SECURITY_STATE.datastore.create_user(
+        active=True,
+        email=user_email,
+    )
 
     return user_obj, oauth_token
 
