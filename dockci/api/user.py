@@ -7,7 +7,7 @@ from .base import BaseDetailResource, BaseRequestParser
 from .fields import GravatarUrl, NonBlankInput, RewriteUrl
 from .util import DT_FORMATTER, new_edit_parsers
 from dockci.models.auth import User
-from dockci.server import API, DB
+from dockci.server import API, APP, DB
 
 
 BASIC_FIELDS = {
