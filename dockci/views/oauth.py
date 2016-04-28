@@ -135,44 +135,27 @@ def oauth_authorized(name):
                 name=name.title(),
                 message=request.args['error_description'],
             ), 'danger')
+            return oauth_redir()
+
+        if current_user.is_authenticated():
+            oauth_token = associate_oauth_current_user(name, resp)
+            user = current_user
+
+        elif not (register or login):
+            raise OAuthRegError(
+                "Registration and login disabled for %s" % name.title())
 
         else:
-            if current_user.is_authenticated():
-                existing_user, user_email, oauth_token = \
-                    existing_user_from_oauth(name, resp)
-                if (
-                    existing_user is not None and
-                    existing_user.id != current_user.id
-                ):
-                    raise OAuthRegError("A user is already registered "
-                                        "with the email '%s'" % user_email)
+            user, oauth_token = user_from_oauth(name, resp)
 
-                # Add a new email to the user if necessary
-                if current_user.emails.filter(
-                    UserEmail.email.ilike(user_email),
-                ).count() == 0:
-                    DB.session.add(UserEmail(
-                        email=user_email,
-                        user=current_user,
-                    ))
+        if user.id is None and not register:
+            raise OAuthRegError(
+                "Registration disabled for %s" % name.title())
+        elif user.id is not None and not login:
+            raise OAuthRegError(
+                "Login disabled for %s" % name.title())
 
-                user = current_user
-
-            elif not (register or login):
-                raise OAuthRegError(
-                    "Registration and login disabled for %s" % name.title())
-
-            else:
-                user, oauth_token = user_from_oauth(name, resp)
-
-            if user.id is None and not register:
-                raise OAuthRegError(
-                    "Registration disabled for %s" % name.title())
-            elif user.id is not None and not login:
-                raise OAuthRegError(
-                    "Login disabled for %s" % name.title())
-
-            associate_user(name, user, oauth_token)
+        associate_user(name, user, oauth_token)
 
     except OAuthRegError as ex:
         flash(ex.reason, 'danger')
@@ -211,6 +194,29 @@ def associate_user(name, user, oauth_token):
 
     flash(u"Connected to %s" % name.title(), 'success')
     login_user(user)
+
+
+def associate_oauth_current_user(name, resp):
+    """ Associate the OAuth token in response with the current user """
+    existing_user, user_email, oauth_token = \
+        existing_user_from_oauth(name, resp)
+    if (
+        existing_user is not None and
+        existing_user.id != current_user.id
+    ):
+        raise OAuthRegError("A user is already registered "
+                            "with the email '%s'" % user_email)
+
+    # Add a new email to the user if necessary
+    if current_user.emails.filter(
+        UserEmail.email.ilike(user_email),
+    ).count() == 0:
+        DB.session.add(UserEmail(
+            email=user_email,
+            user=current_user,
+        ))
+
+    return oauth_token
 
 
 def get_oauth_token(name, response):
