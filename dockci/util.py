@@ -358,6 +358,36 @@ class IOFauxDockerLog(FauxDockerLogBase):
         self.handle.flush()
 
 
+def tokengetter_for(oauth_app):
+    """
+    Flask security tokengetter for an endpoint
+    """
+    def inner():
+        """
+        Create a tokengetter for the current_user model
+        """
+        return get_token_for(oauth_app)
+
+    return inner
+
+
+def get_token_for(oauth_app):
+    """
+    Get a token for the currently logged in user
+    """
+    if current_user.is_authenticated():
+        token = current_user.oauth_tokens.filter_by(
+            service=oauth_app.name,
+        ).first()
+
+        if token:
+            from dockci.server import OAUTH_APPS_SCOPES
+            if token.scope == OAUTH_APPS_SCOPES[oauth_app.name]:
+                return (token.key, token.secret)
+
+    return None
+
+
 def guess_multi_value(value):
     """
     Make the best kind of list from `value`. If it's already a list, or tuple,

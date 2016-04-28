@@ -46,7 +46,7 @@ from dockci.models.job_meta.stages_prepare_docker import (DockerLoginStage,
                                                           PushPrepStage,
                                                           UtilStage,
                                                           )
-from dockci.server import CONFIG, DB
+from dockci.server import CONFIG, DB, OAUTH_APPS
 from dockci.util import (add_to_url_path,
                          bytes_human_readable,
                          client_kwargs_from_config,
@@ -1075,7 +1075,7 @@ class Job(DB.Model, RepoFsMixin):
             extra_dict = dict(description=state_msg)
 
         token_data = self.project.external_auth_token
-        if token_data.provider != service:
+        if token_data.service != service:
             raise InvalidServiceTypeError(
                 "Project has a '%s' OAuth token, rather than '%s'" % (
                     token_data.service,

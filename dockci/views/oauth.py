@@ -18,9 +18,10 @@ from dockci.models.auth import OAuthToken, User
 from dockci.server import (APP,
                            CONFIG,
                            DB,
+                           OAUTH_APPS,
                            OAUTH_APPS_SCOPE_SERIALIZERS,
                            )
-from dockci.util import ext_url_for#, get_token_for
+from dockci.util import ext_url_for, get_token_for
 
 
 RE_VALID_OAUTH = re.compile(r'^[a-z]+$')
@@ -174,7 +175,7 @@ def associate_user(name, user, oauth_token):
 
     # Delete other tokens if the user exists, and token is new
     if user.id is not None and oauth_token.id is None:
-        user.oauth_tokens.filter_by(provider=name).delete(
+        user.oauth_tokens.filter_by(service=name).delete(
             synchronize_session=False,
         )
 
@@ -200,7 +201,7 @@ def get_oauth_token(name, response):
     """
     try:
         oauth_token = OAuthToken.query.filter_by(
-            provider=name,
+            service=name,
             key=response['access_token'],
         ).one()
 
@@ -223,7 +224,7 @@ def get_oauth_token(name, response):
 def create_oauth_token(name, response):
     """ Create a new ``OAuthToken`` from an OAuth response """
     return OAuthToken(
-        provider=name,
+        service=name,
         key=response['access_token'],
         secret='',
         scope=OAUTH_APPS_SCOPE_SERIALIZERS[name](response['scope'])
@@ -260,15 +261,13 @@ def user_from_oauth(name, response):
             "Couldn't get email address from %s" % name.title())
 
     try:
-        user_by_email = User.query.filter_by(
-            email=user_email,
-        ).one()
+        user_by_email = User.query.filter_by(email=user_email).one()
 
     except NoResultFound:
         pass
 
     else:
-        if user_by_email.oauth_tokens.filter_by(provider=name).count() > 0:
+        if user_by_email.oauth_tokens.filter_by(service=name).count() > 0:
             return user_by_email, oauth_token
 
         else:

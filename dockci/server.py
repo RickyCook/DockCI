@@ -16,10 +16,8 @@ import rollbar
 import rollbar.contrib.flask
 
 from flask import Flask
-from flask_dance.consumer import oauth_authorized
-from flask_dance.consumer.backend.sqla import SQLAlchemyBackend
 from flask_oauthlib.client import OAuth
-from flask_security import current_user, Security
+from flask_security import Security
 from flask_mail import Mail
 from flask_migrate import Migrate
 from flask_restful import Api
@@ -29,7 +27,8 @@ from sqlalchemy.pool import NullPool
 
 from dockci.models.config import Config
 from dockci.session import SessionSwitchInterface
-from dockci.util import project_root, setup_templates
+from dockci.util import project_root, setup_templates, tokengetter_for
+
 
 class WrappedSQLAlchemy(SQLAlchemy):
     """ ``SQLAlchemy`` object that makes the ``poolclass`` a ``NullPool`` """
@@ -42,6 +41,7 @@ MAIL = Mail()
 CONFIG = Config()
 SECURITY = Security()
 DB = WrappedSQLAlchemy()
+OAUTH = OAuth(APP)
 API = Api(APP, prefix='/api/v1')
 MANAGER = Manager(APP)
 MIGRATE = Migrate(APP, DB, directory='alembic')
@@ -51,6 +51,7 @@ APP.config.model = CONFIG  # For templates
 APP.session_interface = SessionSwitchInterface(APP)
 
 
+OAUTH_APPS = {}
 OAUTH_APPS_SCOPES = {}
 OAUTH_APPS_SCOPE_SERIALIZERS = {
     'github': lambda scope: ','.join(sorted(scope.split(','))),
@@ -248,87 +249,40 @@ def app_init_oauth():
     """
     Initialize the OAuth integrations
     """
-    from .models.auth import OAuthToken
     if CONFIG.github_enabled:
-        from flask_dance.contrib.github import make_github_blueprint
+        if 'github' not in OAUTH_APPS:
+            scope = 'user:email,admin:repo_hook,repo'
+            OAUTH_APPS_SCOPES['github'] = \
+                OAUTH_APPS_SCOPE_SERIALIZERS['github'](scope)
+            OAUTH_APPS['github'] = OAUTH.remote_app(
+                'github',
+                consumer_key=CONFIG.github_key,
+                consumer_secret=CONFIG.github_secret,
+                request_token_params={'scope': scope},
+                base_url='https://api.github.com/',
+                request_token_url=None,
+                access_token_method='POST',
+                access_token_url='https://github.com/login/oauth/access_token',
+                authorize_url='https://github.com/login/oauth/authorize'
+            )
+    if CONFIG.gitlab_enabled:
+        if 'gitlab' not in OAUTH_APPS:
+            scope = 'api'
+            OAUTH_APPS_SCOPES['gitlab'] = \
+                OAUTH_APPS_SCOPE_SERIALIZERS['gitlab'](scope)
+            OAUTH_APPS['gitlab'] = OAUTH.remote_app(
+                'gitlab',
+                consumer_key=CONFIG.gitlab_key,
+                consumer_secret=CONFIG.gitlab_secret,
+                base_url='%s/api/' % CONFIG.gitlab_base_url,
+                request_token_url=None,
+                access_token_method='POST',
+                access_token_url='%s/oauth/token' % CONFIG.gitlab_base_url,
+                authorize_url='%s/oauth/authorize' % CONFIG.gitlab_base_url,
+            )
 
-        scope = 'admin:repo_hook,repo,user:email'
-        OAUTH_APPS_SCOPES['github'] = \
-            OAUTH_APPS_SCOPE_SERIALIZERS['github'](scope)
-
-        blueprint = make_github_blueprint(
-            backend=SQLAlchemyBackend(
-                OAuthToken,
-                DB.session,
-                user=current_user,
-            ),
-            client_id=CONFIG.github_key,
-            client_secret=CONFIG.github_secret,
-            scope=scope
-        )
-
-        APP.register_blueprint(blueprint, url_prefix='/oauth')
-
-        @oauth_authorized.connect_via(blueprint)
-        def github_logged_in(blueprint_inner, token):
-            import logging
-            logging.warning('login hook')
-            from flask import flash
-            from flask_login import login_user
-            from .models.auth import User, UserEmail
-            from sqlalchemy.orm.exc import NoResultFound
-            if not token:
-                flash("Failed to log in with {name}".format(name=blueprint_inner.name))
-                return
-
-            # figure out who the user is
-            resp = blueprint.session.get("/user")
-            if resp.ok:
-                logging.warning('resp: %s', resp.json())
-                email = resp.json()["email"]
-                query = User.query.filter(
-                    User.email == email,
-                )
-                try:
-                    user = query.one()
-                except NoResultFound:
-                    email_obj = UserEmail(email=email)
-                    user = User(email_obj=email_obj)
-                    email_obj.user = user
-                    DB.session.add(email_obj)
-                    DB.session.add(user)
-                    DB.session.commit()
-
-                if not user.active:
-                    flash(
-                        "User '%s' is inactive" % user.email,
-                        category='danger',
-                    )
-                    return
-
-                flash("Successfully signed in with GitHub")
-                logging.warning(user)
-                login_user(user)
-            else:
-                msg = "Failed to fetch user info from {name}".format(name=blueprint.name)
-                flash(msg, category='danger')
-
-
-    #if CONFIG.gitlab_enabled:
-    #    if 'gitlab' not in OAUTH_APPS:
-    #        scope = 'api'
-    #        OAUTH_APPS_SCOPES['gitlab'] = \
-    #            OAUTH_APPS_SCOPE_SERIALIZERS['gitlab'](scope)
-    #        OAUTH_APPS['gitlab'] = OAUTH.remote_app(
-    #            'gitlab',
-    #            consumer_key=CONFIG.gitlab_key,
-    #            consumer_secret=CONFIG.gitlab_secret,
-    #            base_url='%s/api/' % CONFIG.gitlab_base_url,
-    #            request_token_url=None,
-    #            access_token_method='POST',
-    #            access_token_url='%s/oauth/token' % CONFIG.gitlab_base_url,
-    #            authorize_url='%s/oauth/authorize' % CONFIG.gitlab_base_url,
-    #        )
+    for oauth_app in OAUTH_APPS.values():
+        oauth_app.tokengetter(tokengetter_for(oauth_app))
 
 
 def app_init_handlers():

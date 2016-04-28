@@ -11,7 +11,7 @@ from dockci.server import API, DB
 
 BASIC_FIELDS = {
     'id': fields.Integer(),
-    'email': fields.String(attribute='email'),
+    'email': fields.String(),
     'active': fields.Boolean(),
 }
 
