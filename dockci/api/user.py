@@ -85,8 +85,8 @@ class UserDetail(BaseDetailResource):
     @marshal_with(DETAIL_FIELDS)
     def get(self, user_id):
         """ Get a user's details """
-
         return self.user_or_404(user_id)
+
     @login_required
     @marshal_with(DETAIL_FIELDS)
     def post(self, user_id, user=None):
