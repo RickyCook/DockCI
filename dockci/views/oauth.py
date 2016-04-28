@@ -272,12 +272,9 @@ def user_from_oauth(name, response):
             raise OAuthRegError("A user is already registered "
                                 "with the email '%s'" % user_email)
 
-    user_obj = User(active=True)
+    user_obj = User(active=True, email=user_email)
     email_obj = UserEmail(email=user_email, user=user_obj)
-    user_obj.email = email_obj
-    return User(
-        active=True,
-    ), oauth_token
+    return user_obj, oauth_token
 
 
 def oauth_response(oauth_app):
