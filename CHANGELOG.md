@@ -28,6 +28,8 @@
 - Change OAuth `return_to` param to `next` #445
 - Add more error handling to OAuth #445
 - Users may have multiple emails
+- OAuth registrations are associated with current user
+- OAuth registrations with a new email add to current user
 
 ### v0.0.9
 - Exception reported to Rollbar on git push hook `ValidationError` #322
