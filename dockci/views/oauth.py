@@ -138,9 +138,8 @@ def oauth_authorized(name):
 
         else:
             if current_user.is_authenticated():
-                existing_user, user_email = existing_user_from_oauth(
-                    name, resp,
-                )
+                existing_user, user_email, oauth_token = \
+                    existing_user_from_oauth(name, resp)
                 if (
                     existing_user is not None and
                     existing_user.id != current_user.id
@@ -158,7 +157,6 @@ def oauth_authorized(name):
                     ))
 
                 user = current_user
-                oauth_token = get_oauth_token(name, resp)
 
             elif not (register or login):
                 raise OAuthRegError(
@@ -273,7 +271,11 @@ def existing_user_from_oauth(name, response):
         raise OAuthRegError(
             "Couldn't get email address from %s" % name.title())
 
-    return SECURITY_STATE.datastore.find_user(email=user_email), user_email
+    return (
+        SECURITY_STATE.datastore.find_user(email=user_email),
+        user_email,
+        oauth_token,
+    )
 
 
 def user_from_oauth(name, response):
@@ -288,7 +290,8 @@ def user_from_oauth(name, response):
 
     If a user exists with the email from the service, ``OAuthRegError`` raises
     """
-    existing_user, user_email = existing_user_from_oauth(name, response)
+    existing_user, user_email, oauth_token = \
+        existing_user_from_oauth(name, response)
 
     if existing_user is not None:
         if existing_user.oauth_tokens.filter_by(service=name).count() > 0:
@@ -300,6 +303,8 @@ def user_from_oauth(name, response):
 
     user_obj = User(active=True, email=user_email)
     email_obj = UserEmail(email=user_email, user=user_obj)
+
+
     return user_obj, oauth_token
 
 
