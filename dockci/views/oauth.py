@@ -14,7 +14,7 @@ from flask_security import current_user, login_required
 from flask_security.utils import url_for_security
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
-from dockci.models.auth import OAuthToken, User, UserEmail
+from dockci.models.auth import OAuthToken, UserEmail
 from dockci.server import (APP,
                            CONFIG,
                            DB,
@@ -259,7 +259,7 @@ def existing_user_from_oauth(name, response):
     oauth_token_tuple = (oauth_token.key, oauth_token.secret)
 
     if oauth_token.id is not None:
-        return oauth_token.user, oauth_token.user.email
+        return oauth_token.user, oauth_token.user.email, oauth_token
 
     user_data = oauth_app.get(
         USER_API_PATHS[name],

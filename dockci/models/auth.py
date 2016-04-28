@@ -148,9 +148,9 @@ class OAuthToken(DB.Model):  # pylint:disable=no-init
                 setattr(self, attr_name, other_val)
 
     def __str__(self):
-        return '<{klass}: {provider} for {email}>'.format(
+        return '<{klass}: {service} for {email}>'.format(
             klass=self.__class__.__name__,
-            provider=self.provider,
+            service=self.service,
             email=self.user.email,
         )
 
@@ -176,13 +176,12 @@ class User(DB.Model, UserMixin):  # pylint:disable=no-init
     active = DB.Column(DB.Boolean())
     confirmed_at = DB.Column(DB.DateTime())
     email = DB.Column(DB.String(255),
-                                 DB.ForeignKey('user_email.email'),
-                                 index=True,
-                                 unique=True,
-                                 nullable=False)
+                      DB.ForeignKey('user_email.email'),
+                      index=True,
+                      unique=True,
+                      nullable=False)
     email_obj = DB.relationship('UserEmail',
-                                    foreign_keys="User.email",
-                                    )
+                                foreign_keys="User.email")
     roles = DB.relationship('Role',
                             secondary=ROLES_USERS,
                             backref=DB.backref('users', lazy='dynamic'))
