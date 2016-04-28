@@ -138,6 +138,25 @@ def oauth_authorized(name):
 
         else:
             if current_user.is_authenticated():
+                existing_user, user_email = existing_user_from_oauth(
+                    name, resp,
+                )
+                if (
+                    existing_user is not None and
+                    existing_user.id != current_user.id
+                ):
+                    raise OAuthRegError("A user is already registered "
+                                        "with the email '%s'" % user_email)
+
+                # Add a new email to the user if necessary
+                if UserEmail.query.filter(
+                        UserEmail.email.ilike(user_email),
+                ).count() == 0:
+                    DB.session.add(UserEmail(
+                        email=user_email,
+                        user=current_user,
+                    ))
+
                 user = current_user
                 oauth_token = get_oauth_token(name, resp)
 
@@ -233,6 +252,30 @@ def create_oauth_token(name, response):
     )
 
 
+def existing_user_from_oauth(name, response):
+    """
+    Query the OAuth provider API for user email, and get a user from that
+    """
+    oauth_app = OAUTH_APPS[name]
+    oauth_token = get_oauth_token(name, response)
+    oauth_token_tuple = (oauth_token.key, oauth_token.secret)
+
+    if oauth_token.id is not None:
+        return oauth_token.user, oauth_token.user.email
+
+    user_data = oauth_app.get(
+        USER_API_PATHS[name],
+        token=oauth_token_tuple,
+    ).data
+    user_email = user_data['email']
+
+    if user_email is None:
+        raise OAuthRegError(
+            "Couldn't get email address from %s" % name.title())
+
+    return SECURITY_STATE.datastore.find_user(email=user_email), user_email
+
+
 def user_from_oauth(name, response):
     """
     Given an OAuth response, extrapolate a ``User`` and an ``OAuthToken``.
@@ -245,28 +288,11 @@ def user_from_oauth(name, response):
 
     If a user exists with the email from the service, ``OAuthRegError`` raises
     """
-    oauth_app = OAUTH_APPS[name]
-    oauth_token = get_oauth_token(name, response)
-    oauth_token_tuple = (oauth_token.key, oauth_token.secret)
+    existing_user, user_email = existing_user_from_oauth(name, response)
 
-    if oauth_token.id is not None:
-        return oauth_token.user, oauth_token
-
-    user_data = oauth_app.get(
-        USER_API_PATHS[name],
-        token=oauth_token_tuple,
-    ).data
-    user_email = user_data['email']
-
-    if user_email is None:
-        raise OAuthRegError(
-            "Couldn't get email address from %s" % name.title())
-
-    user_by_email = SECURITY_STATE.datastore.find_user(email=user_email)
-
-    if user_by_email is not None:
-        if user_by_email.oauth_tokens.filter_by(service=name).count() > 0:
-            return user_by_email, oauth_token
+    if existing_user is not None:
+        if existing_user.oauth_tokens.filter_by(service=name).count() > 0:
+            return existing_user, oauth_token
 
         else:
             raise OAuthRegError("A user is already registered "
