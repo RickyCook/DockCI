@@ -1,4 +1,5 @@
 """ API relating to User model objects """
+from flask import abort
 from flask_restful import fields, inputs, marshal_with, Resource
 from flask_security import current_user, login_required
 
@@ -49,6 +50,9 @@ USER_EDIT_PARSER.add_argument('active',
                               type=inputs.boolean)
 
 
+SECURITY_STATE = APP.extensions['security']
+
+
 # pylint:disable=no-self-use
 
 class UserList(BaseDetailResource):
@@ -68,18 +72,28 @@ class UserList(BaseDetailResource):
 
 class UserDetail(BaseDetailResource):
     """ API resource that handles getting user details, and updating users """
+    @classmethod
+    def user_or_404(cls, user_id):
+        """ Return a user from the security store, or 404 """
+        user = SECURITY_STATE.datastore.get_user(user_id)
+        if user is None:
+            return abort(404)
+
+        return user
+
     @login_required
     @marshal_with(DETAIL_FIELDS)
     def get(self, user_id):
         """ Get a user's details """
-        return User.query.get_or_404(user_id)
 
+        return self.user_or_404(user_id)
     @login_required
     @marshal_with(DETAIL_FIELDS)
     def post(self, user_id, user=None):
         """ Update a user """
         if user is None:
-            user = User.query.get_or_404(user_id)
+            user = self.user_or_404(user_id)
+
         return self.handle_write(user, USER_EDIT_PARSER)
 
 

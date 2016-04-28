@@ -108,11 +108,7 @@ def try_user_pass(password, lookup):
     if password is None or lookup is None:
         return None
 
-    try:
-        user = User.query.get(int(lookup))
-
-    except ValueError:
-        user = User.query.filter_by(email=lookup).first()
+    user = SECURITY_STATE.datastore.get_user(lookup)
 
     if not user:
         return None
