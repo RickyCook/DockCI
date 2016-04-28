@@ -79,8 +79,8 @@ class GravatarUrl(fields.String):
     ...              Job(git_author_email='ricky@spruce.sh'))
     'https://s.gravatar.com/avatar/35866d5d838f7aeb9b51a29eda9878e7'
 
-    >>> field.output('primary_email.email',
-    ...              User(primary_email=UserEmail(email='ricky@spruce.sh')))
+    >>> field.output('email_obj.email',
+    ...              User(email_obj=UserEmail(email='ricky@spruce.sh')))
     'https://s.gravatar.com/avatar/35866d5d838f7aeb9b51a29eda9878e7'
 
     >>> field = GravatarUrl(attr_name='git_author_email')
@@ -91,9 +91,9 @@ class GravatarUrl(fields.String):
     >>> field.output('git_author_email',
     ...              Job(git_author_email=None))
 
-    >>> field = GravatarUrl(attr_name='primary_email.email')
+    >>> field = GravatarUrl(attr_name='email_obj.email')
     >>> field.output('different_name',
-    ...              User(primary_email=UserEmail(email='ricky@spruce.sh')))
+    ...              User(email_obj=UserEmail(email='ricky@spruce.sh')))
     'https://s.gravatar.com/avatar/35866d5d838f7aeb9b51a29eda9878e7'
     """
     def __init__(self, attr_name=None):
