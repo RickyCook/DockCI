@@ -6,6 +6,7 @@ import sqlalchemy
 
 from flask_dance.consumer.backend.sqla import OAuthConsumerMixin
 from flask_security import UserMixin, RoleMixin
+from flask_security.datastore import SQLAlchemyUserDatastore
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from dockci.server import DB
@@ -15,6 +16,27 @@ ROLES_USERS = DB.Table(
     DB.Column('user_id', DB.Integer(), DB.ForeignKey('user.id'), index=True),
     DB.Column('role_id', DB.Integer(), DB.ForeignKey('role.id')),
 )
+
+
+class DockciUserDatastore(SQLAlchemyUserDatastore):
+    """
+    Flask-security datastore to add ``UserEmail`` objects for users, and
+    get users by all attached emails
+    """
+    def get_user(self, identifier):
+        if self._is_numeric(identifier):
+            return self.user_model.query.get(identifier)
+
+        email_obj = UserEmail.query.filter(
+            UserEmail.email.ilike(identifier)
+        ).first()
+        if email_obj is not None:
+            return email_obj.user
+
+    def create_user(self, **kwargs):
+        user = super(DockciUserDatastore, self).create_user(**kwargs)
+        self.put(UserEmail(email=user.email, user=user))
+        return user
 
 
 class Role(DB.Model, RoleMixin):

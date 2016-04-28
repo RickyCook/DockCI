@@ -19,7 +19,7 @@ from flask import Flask
 from flask_dance.consumer import oauth_authorized
 from flask_dance.consumer.backend.sqla import SQLAlchemyBackend
 from flask_oauthlib.client import OAuth
-from flask_security import current_user, Security, SQLAlchemyUserDatastore
+from flask_security import current_user, Security
 from flask_mail import Mail
 from flask_migrate import Migrate
 from flask_restful import Api
@@ -141,12 +141,12 @@ def app_init():
 
     mimetypes.add_type('application/x-yaml', 'yaml')
 
-    from dockci.models.auth import User, Role
+    from dockci.models.auth import DockciUserDatastore, User, Role
     from dockci.models.job import Job  # pylint:disable=unused-variable
     from dockci.models.project import Project  # pylint:disable=unused-variable
 
     if 'security' not in APP.blueprints:
-        SECURITY.init_app(APP, SQLAlchemyUserDatastore(DB, User, Role))
+        SECURITY.init_app(APP, DockciUserDatastore(DB, User, Role))
 
     MAIL.init_app(APP)
     DB.init_app(APP)
