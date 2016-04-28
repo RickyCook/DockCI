@@ -14,7 +14,7 @@ from flask_security import current_user, login_required
 from flask_security.utils import url_for_security
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
-from dockci.models.auth import OAuthToken, User
+from dockci.models.auth import OAuthToken, User, UserEmail
 from dockci.server import (APP,
                            CONFIG,
                            DB,
@@ -30,6 +30,8 @@ USER_API_PATHS = {
     'github': '/user',
     'gitlab': '/api/v3/user',
 }
+
+SECURITY_STATE = APP.extensions['security']
 
 
 class OAuthRegError(Exception):
@@ -260,13 +262,9 @@ def user_from_oauth(name, response):
         raise OAuthRegError(
             "Couldn't get email address from %s" % name.title())
 
-    try:
-        user_by_email = User.query.filter_by(email=user_email).one()
+    user_by_email = SECURITY_STATE.datastore.find_user(email=user_email)
 
-    except NoResultFound:
-        pass
-
-    else:
+    if user_by_email is not None:
         if user_by_email.oauth_tokens.filter_by(service=name).count() > 0:
             return user_by_email, oauth_token
 

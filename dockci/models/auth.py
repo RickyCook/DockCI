@@ -31,6 +31,17 @@ class DockciUserDatastore(SQLAlchemyUserDatastore):
         if email_obj is not None:
             return email_obj.user
 
+    def find_user(self, **kwargs):
+        email_val = kwargs.pop('email', None)
+        base_query = self.user_model.query.filter_by(**kwargs)
+
+        if email_val is None:
+            return base_query.first()
+
+        return base_query.join(self.user_model.emails).filter(
+            UserEmail.email == email_val,
+        ).first()
+
     def create_user(self, **kwargs):
         user = super(DockciUserDatastore, self).create_user(**kwargs)
         self.put(UserEmail(email=user.email, user=user))
