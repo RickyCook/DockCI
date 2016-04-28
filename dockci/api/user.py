@@ -116,7 +116,9 @@ class MeEmailDetail(Resource):
     @login_required
     def delete(self, email):
         """ Delete an email from the current user """
-        email = current_user.emails.filter_by(email=email).first_or_404()
+        email = current_user.emails.filter(
+            UserEmail.email.ilike(email),
+        ).first_or_404()
         DB.session.delete(email)
         DB.session.commit()
         return {'message': '%s deleted' % email.email}
