@@ -57,6 +57,13 @@ OAUTH_APPS_SCOPE_SERIALIZERS = {
     'gitlab': lambda scope: ','.join(sorted(scope.split(','))),
 }
 
+try:
+    from flask_debugtoolbar import DebugToolbarExtension
+except ImportError:
+    TOOLBAR = None
+else:
+    TOOLBAR = DebugToolbarExtension()
+
 
 def get_db_uri():
     """ Try to get the DB URI from multiple sources """
@@ -143,6 +150,10 @@ def app_init():
 
     MAIL.init_app(APP)
     DB.init_app(APP)
+
+    if TOOLBAR is not None:
+        logging.warning('Debug initialized. Enabled: %s', APP.debug)
+        TOOLBAR.init_app(APP)
 
     app_init_oauth()
     app_init_handlers()
