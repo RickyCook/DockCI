@@ -5,7 +5,7 @@ docker-py==1.5.0
 Flask-Login==0.2.11  # Only required until https://github.com/mattupstate/flask-security/pull/429
 Flask-Mail==0.9.1
 Flask-Migrate==1.7.0
-Flask-OAuthlib==0.9.1
+-e git+https://github.com/RickyCook/Flask-OAuthlib@75c870b#egg=Flask-OAuthlib
 Flask-RESTful==0.3.4
 Flask-Script==2.0.5
 Flask-Security==1.7.4

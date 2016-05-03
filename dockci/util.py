@@ -22,6 +22,7 @@ from ipaddress import ip_address
 from urllib.parse import urlencode, urlparse, urlunparse
 
 import docker.errors
+import jwt
 import py.error  # pylint:disable=import-error
 import yaml_model
 
@@ -726,3 +727,41 @@ def is_api_request(check_request=None):
         check_request = request
 
     return API_RE.match(check_request.url_rule.rule) is not None
+
+
+def jwt_token(**kwargs):
+    """
+    Create a new JWT token with the given args
+
+    Examples:
+
+    >>> from .server import CONFIG
+
+    >>> token = jwt_token()
+    >>> jwt.decode(token, CONFIG.secret)
+    {'iat': ...}
+
+    >>> token = jwt_token(name='test')
+    >>> data = jwt.decode(token, CONFIG.secret)
+    >>> sorted(list(data.items()))
+    [('iat', ...), ('name', 'test')]
+
+    >>> token = jwt_token(iat=1111)
+    >>> jwt.decode(token, CONFIG.secret)
+    {'iat': 1111}
+    """
+    from .server import CONFIG
+
+    jwt_kwargs = kwargs.copy()
+    if 'sub' not in jwt_kwargs and current_user.is_authenticated():
+        jwt_kwargs['sub'] = current_user.id
+    if 'iat' not in jwt_kwargs:
+        jwt_kwargs['iat'] = datetime.datetime.utcnow()
+
+    jwt_kwargs = {
+        key: value
+        for key, value in jwt_kwargs.items()
+        if value is not None
+    }
+
+    return jwt.encode(jwt_kwargs, CONFIG.secret).decode()

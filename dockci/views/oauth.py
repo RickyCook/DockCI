@@ -21,7 +21,7 @@ from dockci.server import (APP,
                            OAUTH_APPS,
                            OAUTH_APPS_SCOPE_SERIALIZERS,
                            )
-from dockci.util import ext_url_for, get_token_for
+from dockci.util import ext_url_for, get_token_for, jwt_token
 
 
 RE_VALID_OAUTH = re.compile(r'^[a-z]+$')
@@ -32,6 +32,8 @@ USER_API_PATHS = {
 }
 
 SECURITY_STATE = APP.extensions['security']
+
+JWT_URL_RE = re.compile(r'\{jwt:(?P<name>[a-zA-Z0-9]+)\}')
 
 
 class OAuthRegError(Exception):
@@ -56,10 +58,16 @@ def check_oauth_enabled(name):
     )
 
 
-def oauth_redir(next_url=None):
+def oauth_redir(next_url=None, user_id=None):
     """ Get the OAuth redirection URL """
     if next_url is None:
         next_url = request.args.get('next') or url_for('index_view')
+
+    if 'jwt' in next_url and user_id is not None:
+        match = JWT_URL_RE.search(next_url)
+        if match is not None:
+            token = jwt_token(sub=user_id, **match.groupdict())
+            next_url = JWT_URL_RE.sub(token, next_url, 1)
 
     return redirect(next_url)
 
@@ -140,6 +148,7 @@ def oauth_authorized(name):
         if current_user.is_authenticated():
             oauth_token = associate_oauth_current_user(name, resp)
             user = current_user
+            user_id = current_user.id
 
         elif not (register or login):
             raise OAuthRegError(
@@ -147,6 +156,7 @@ def oauth_authorized(name):
 
         else:
             user, oauth_token = user_from_oauth(name, resp)
+            user_id = user.id
 
         if user.id is None and not register:
             raise OAuthRegError(
@@ -156,6 +166,7 @@ def oauth_authorized(name):
                 "Login disabled for %s" % name.title())
 
         associate_user(name, user, oauth_token)
+        return oauth_redir(user_id=user_id)
 
     except OAuthRegError as ex:
         flash(ex.reason, 'danger')

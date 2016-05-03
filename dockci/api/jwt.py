@@ -12,6 +12,7 @@ from .exceptions import OnlyMeError, WrappedTokenError, WrongAuthMethodError
 from .fields import NonBlankInput
 from .util import DT_FORMATTER
 from dockci.server import API, CONFIG
+from dockci.util import jwt_token
 
 
 JWT_ME_DETAIL_PARSER = BaseRequestParser()
@@ -25,14 +26,6 @@ JWT_NEW_PARSER.add_argument('exp',
                             help="Expiration time of the token")
 
 
-# pylint:disable=no-self-use
-
-class JwtString(fields.String):
-    """ Marshalling field that JWT-encodes a value with the global secret """
-    def format(self, value):
-        return jwt.encode(value, CONFIG.secret).decode()
-
-
 class JwtNew(Resource):
     """ API resource that handles creating JWT tokens """
     @login_required
@@ -42,17 +35,7 @@ class JwtNew(Resource):
             raise OnlyMeError("create JWT tokens")
 
         args = JWT_NEW_PARSER.parse_args(strict=True)
-        args.update({
-            'sub': user_id,
-            'iat': datetime.utcnow(),
-        })
-        args = {
-            key: value
-            for key, value in args.items()
-            if value is not None
-        }
-
-        return {'token': JwtString().format(args)}, 201
+        return {'token': jwt_token(**args)}, 201
 
 
 class JwtMeDetail(Resource):
