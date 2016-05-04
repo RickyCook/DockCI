@@ -1112,7 +1112,7 @@ class Job(DB.Model, RepoFsMixin):
             message = traceback.format_exc()
 
         try:
-            stage = JobStage(
+            JobStage(
                 self,
                 stage_slug,
                 lambda handle: handle.write(
