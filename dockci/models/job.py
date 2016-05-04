@@ -5,6 +5,7 @@ DockCI - CI, but with that all important Docker twist
 # TODO fewer lines somehow
 # pylint:disable=too-many-lines
 
+import logging
 import random
 import sys
 import tempfile
@@ -975,10 +976,10 @@ class Job(DB.Model, RepoFsMixin):
 
             return True
         except Exception:  # pylint:disable=broad-except
+            self._error_stage('error')
             self.result = 'broken'
             self.db_session.add(self)
             self.db_session.commit()
-            self._error_stage('error')
 
             return False
 
@@ -1097,11 +1098,6 @@ class Job(DB.Model, RepoFsMixin):
         """
         Create an error stage and add stack trace for it
         """
-        # TODO all this should be in the try/except
-        stage = JobStageTmp(job=self, slug=stage_slug)
-        self.db_session.add(stage)
-        self.db_session.commit()
-
         message = None
         try:
             _, ex, _ = sys.exc_info()
@@ -1116,7 +1112,7 @@ class Job(DB.Model, RepoFsMixin):
             message = traceback.format_exc()
 
         try:
-            JobStage(
+            stage = JobStage(
                 self,
                 stage_slug,
                 lambda handle: handle.write(
@@ -1124,4 +1120,4 @@ class Job(DB.Model, RepoFsMixin):
                 )
             ).run()
         except Exception:  # pylint:disable=broad-except
-            print(traceback.format_exc())
+            logging.exception("Error adding error stage")
